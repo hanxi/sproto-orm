@@ -1,0 +1,291 @@
+-- 测试命令 lua tools/gen_schema.lua test/schema_define.lua test/schema.lua
+
+local sformat = string.format
+local tconcat = table.concat
+local tinsert = table.insert
+
+local input_filename = arg[1]
+local output_filename = arg[2]
+
+-- 检查文件名是否提供
+if not input_filename then
+    input_filename = "schema_define.lua"
+end
+if not output_filename then
+    output_filename = "schema.lua"
+end
+
+local function read_file(path)
+  local handle = io.open(path, "r")
+  local ret = handle:read("*a")
+  handle:close()
+  return ret
+end
+
+local function write_file(path, data, mode)
+  local handle = io.open(path, mode)
+  handle:write(data)
+  handle:close()
+end
+
+local s = read_file(input_filename)
+local schema_define = load(s)()
+print("Loaded schema define from: " .. input_filename)
+
+function interp(s, tab)
+    return (s:gsub("($%b{})", function(w)
+        return tab[w:sub(3, -2)] or w
+    end))
+end
+
+local head = sformat([[
+-- Code generated from %s
+-- DO NOT EDIT!
+
+]],
+    input_filename
+)
+
+local schema_base = [[
+local orm_base = require("orm_base")
+local tointeger = math.tointeger
+local sformat = string.format
+
+local number_type = setmetatable({}, {
+    __tostring = function()
+        return "schema_number"
+    end,
+})
+local number = setmetatable({}, {
+    __metatable = number_type,
+})
+
+local integer_type = setmetatable({}, {
+    __tostring = function()
+        return "schema_integer"
+    end,
+})
+local integer = setmetatable({}, {
+    __metatable = integer_type,
+})
+
+local string_type = setmetatable({}, {
+    __tostring = function()
+        return "schema_string"
+    end,
+})
+local string = setmetatable({}, {
+    __metatable = string_type,
+})
+
+local boolean_type = setmetatable({}, {
+    __tostring = function()
+        return "schema_boolean"
+    end,
+})
+local boolean = setmetatable({}, {
+    __metatable = boolean_type,
+})
+
+local function _check_k_tp(k, need_tp)
+    local need_tp_mt =  getmetatable(need_tp)
+    if need_tp_mt == integer_type then
+        if (type(k) ~= "number") or (tointeger(k) == nil) then
+            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp_mt)))
+        end
+        return
+    elseif need_tp_mt == string_type then
+        if type(k) ~= "string" then
+            error(sformat("not equal k type. need string, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp_mt)))
+            return false
+        end
+        return
+    end
+    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp_mt), tostring(k)))
+end
+
+local function _check_v_tp(v, need_tp)
+    local need_tp_mt = getmetatable(need_tp)
+    if need_tp_mt == integer_type then
+        if (type(v) ~= "number") or (tointeger(v) == nil) then
+            error(sformat("not equal v type. need integer, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+        end
+        return
+    elseif need_tp_mt == number_type then
+        if type(v) ~= "number" then
+            error(sformat("not equal v type. need number, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+        end
+        return
+    elseif need_tp_mt == string_type then
+        if type(v) ~= "string" then
+            error(sformat("not equal v type. need string, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+        end
+        return
+    elseif need_tp_mt == boolean_type then
+        if type(v) ~= "boolean" then
+            error(sformat("not equal v type. need boolean, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+        end
+        return
+    end
+    if getmetatable(v) ~= need_tp_mt then
+        error(sformat("not equal v type. need_tp: %s, real_tp: %s, v: %s", tostring(need_tp_mt), tostring(getmetatable(v)), tostring(v)))
+    end
+end
+
+local function check_k_func(need_tp)
+    return function(self, k)
+        _check_k_tp(k, need_tp)
+    end
+end
+
+local function check_kv_func(k_need_tp, v_need_tp)
+    return function(self, k, v)
+        _check_k_tp(k, k_need_tp)
+        _check_v_tp(v, v_need_tp)
+    end
+end
+
+local function check_k(self, k)
+    local schema = self[k]
+    if not schema then
+        error(sformat("not exist key: %s", k))
+    end
+end
+
+local function check_kv(self, k, v)
+    local schema = self[k]
+    if not schema then
+        error(sformat("not exist key: %s", k))
+    end
+
+    _check_v_tp(v, schema)
+end
+
+]]
+
+
+local defines = {}
+
+local tmpl_message = [[
+setmetatable(${name}_type, {
+    __tostring = function()
+        return "schema_${name}"
+    end,
+})
+${fields_str}
+${name}._check_k = check_k
+${name}._check_kv = check_kv
+${name}.new = function(init)
+    return orm_base.new(${name}, init)
+end
+setmetatable(${name}, {
+    __metatable = ${name}_type,
+})
+]]
+
+local tmpl_map = [[
+setmetatable(map_${kv_type}_type, {
+    __tostring = function()
+        return "schema_map_${kv_type}"
+    end,
+})
+map_${kv_type}._check_k = check_k_func(${key_type})
+map_${kv_type}._check_kv = check_kv_func(${key_type}, ${value_type})
+map_${kv_type}.new = function(init)
+    return orm_base.new(map_${kv_type}, init)
+end
+setmetatable(map_${kv_type}, {
+    __metatable = map_${kv_type}_type,
+    __index = function(t, k)
+        return ${value_type}
+    end,
+})
+]]
+
+local tmpl_arr = [[
+setmetatable(arr_${value_type}_type, {
+    __tostring = function()
+        return "schema_arr_${value_type}"
+    end,
+})
+arr_${value_type}._check_k = check_k_func(integer)
+arr_${value_type}._check_kv = check_kv_func(integer, ${value_type})
+arr_${value_type}.new = function(init)
+    return orm_base.new(arr_${value_type}, init)
+end
+setmetatable(arr_${value_type}, {
+    __metatable = arr_${value_type}_type,
+    __index = function(t, k)
+        return ${value_type}
+    end,
+})
+]]
+
+local type2name = {
+    double = "number",
+    integer = "integer",
+    binary = "string",
+    string = "string",
+    boolean = "boolean",
+}
+
+local function typename(t)
+    return type2name[t] or t
+end
+
+local returns = {}
+tinsert(returns, "return {")
+
+local bodys = {}
+local maps = {}
+local arrs = {}
+for name, fields in pairs(schema_define) do
+    tinsert(defines, sformat("local %s, %s_type = {}, {}", name, name))
+    tinsert(returns, sformat("    %s = %s,", name, name))
+
+    local fields_line = {}
+    for field_name, field in pairs(fields) do
+        local tp_name = field.type
+        if tp_name == "map" then
+            local key_type = typename(field.key)
+            local value_type = typename(field.value)
+            local kv_type = sformat("%s_%s", key_type, value_type)
+            if not maps[kv_type] then
+                maps[kv_type] = true
+                tinsert(bodys, interp(tmpl_map, { key_type = key_type, value_type = value_type, kv_type = kv_type }))
+                tinsert(defines, sformat("local map_%s, map_%s_type = {}, {}", kv_type, kv_type))
+                tinsert(returns, sformat("    map_%s = map_%s,", kv_type, kv_type))
+            end
+        elseif tp_name == "array" then
+            local field_type = typename(field.item)
+            arrs[field_type] = true
+            tinsert(bodys, interp(tmpl_arr, { value_type = field_type }))
+            tinsert(defines, sformat("local arr_%s, arr_%s_type = {}, {}", field_type, field_type))
+            tinsert(returns, sformat("    arr_%s = arr_%s,", field_type, field_type))
+        end
+
+        local field_type = typename(tp_name)
+        if tp_name == "map" then
+            field_type = sformat("map_%s_%s", typename(field.key), typename(field.value))
+        elseif tp_name == "array" then
+            field_type = sformat("arr_%s", typename(field.item))
+        end
+        tinsert(fields_line, sformat("%s.%s = %s", name, field_name, field_type))
+    end
+    local fields_str = tconcat(fields_line, "\n")
+    tinsert(bodys, interp(tmpl_message, { name = name, fields_str = fields_str }))
+end
+
+tinsert(returns, "}")
+
+local ret_content = head
+    .. schema_base
+    .. tconcat(defines, "\n")
+    .. "\n\n"
+    .. tconcat(bodys, "\n")
+    .. "\n"
+    .. tconcat(returns, "\n")
+    .. "\n"
+
+write_file(output_filename, ret_content, "w")
+print("successfully generated schema to: " .. output_filename)

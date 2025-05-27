@@ -1,0 +1,19 @@
+.PhoneNumber {
+    number 99 : string
+    type  1000: integer
+}
+
+.Person {
+	name 0 : string
+	id 1 : integer
+
+
+	phone 4 : *PhoneNumber
+	phonemap 5 : *PhoneNumber()
+    phonemapkv 6 : *PhoneNumber(number)
+	onephone 7 : PhoneNumber
+}
+
+.AddressBook {
+	person 0: *Person(id)
+}

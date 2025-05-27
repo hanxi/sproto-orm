@@ -1,0 +1,3 @@
+[submodule "tools/sprotodump"]
+	path = tools/sprotodump
+	url = https://github.com/lvzixun/sprotodump.git
