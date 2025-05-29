@@ -135,15 +135,122 @@ local function check_kv(self, k, v)
     _check_v_tp(v, schema)
 end
 
+local IntKeyStringValue = { type = "struct" }
+local Person = { type = "struct" }
+local map_integer_string = { type = "map"}
+local arr_PhoneNumber = { type = "array" }
+local map_string_integer = { type = "map"}
+local map_string_PhoneNumber = { type = "map"}
+local PhoneNumber = { type = "struct" }
 local AddressBook = { type = "struct" }
 local map_integer_Person = { type = "map"}
-local IntKeyStringValue = { type = "struct" }
-local PhoneNumber = { type = "struct" }
-local Person = { type = "struct" }
-local map_string_integer = { type = "map"}
-local map_integer_string = { type = "map"}
-local map_string_PhoneNumber = { type = "map"}
-local arr_PhoneNumber = { type = "array" }
+
+setmetatable(IntKeyStringValue, {
+    __tostring = function()
+        return "schema_IntKeyStringValue"
+    end,
+})
+IntKeyStringValue.value = string
+IntKeyStringValue.key = integer
+IntKeyStringValue._parse_k = parse_k
+IntKeyStringValue._check_k = check_k
+IntKeyStringValue._check_kv = check_kv
+IntKeyStringValue.new = function(init)
+    return orm_base.new(IntKeyStringValue, init)
+end
+
+setmetatable(map_integer_string, {
+    __tostring = function()
+        return "schema_map_integer_string"
+    end,
+    __index = function(t, k)
+        return string
+    end,
+})
+map_integer_string._parse_k = parse_k_func(integer)
+map_integer_string._check_k = check_k_func(integer)
+map_integer_string._check_kv = check_kv_func(integer, string)
+map_integer_string.new = function(init)
+    return orm_base.new(map_integer_string, init)
+end
+
+setmetatable(arr_PhoneNumber, {
+    __tostring = function()
+        return "schema_arr_PhoneNumber"
+    end,
+    __index = function(t, k)
+        return PhoneNumber
+    end,
+})
+arr_PhoneNumber._parse_k = parse_k_func(integer)
+arr_PhoneNumber._check_k = check_k_func(integer)
+arr_PhoneNumber._check_kv = check_kv_func(integer, PhoneNumber)
+arr_PhoneNumber.new = function(init)
+    return orm_base.new(arr_PhoneNumber, init)
+end
+
+setmetatable(map_string_integer, {
+    __tostring = function()
+        return "schema_map_string_integer"
+    end,
+    __index = function(t, k)
+        return integer
+    end,
+})
+map_string_integer._parse_k = parse_k_func(string)
+map_string_integer._check_k = check_k_func(string)
+map_string_integer._check_kv = check_kv_func(string, integer)
+map_string_integer.new = function(init)
+    return orm_base.new(map_string_integer, init)
+end
+
+setmetatable(map_string_PhoneNumber, {
+    __tostring = function()
+        return "schema_map_string_PhoneNumber"
+    end,
+    __index = function(t, k)
+        return PhoneNumber
+    end,
+})
+map_string_PhoneNumber._parse_k = parse_k_func(string)
+map_string_PhoneNumber._check_k = check_k_func(string)
+map_string_PhoneNumber._check_kv = check_kv_func(string, PhoneNumber)
+map_string_PhoneNumber.new = function(init)
+    return orm_base.new(map_string_PhoneNumber, init)
+end
+
+setmetatable(Person, {
+    __tostring = function()
+        return "schema_Person"
+    end,
+})
+Person.i2s = map_integer_string
+Person.name = string
+Person.phone = arr_PhoneNumber
+Person.phonemap = map_string_integer
+Person.phonemapkv = map_string_PhoneNumber
+Person.id = integer
+Person.onephone = PhoneNumber
+Person._parse_k = parse_k
+Person._check_k = check_k
+Person._check_kv = check_kv
+Person.new = function(init)
+    return orm_base.new(Person, init)
+end
+
+setmetatable(PhoneNumber, {
+    __tostring = function()
+        return "schema_PhoneNumber"
+    end,
+})
+PhoneNumber.type = integer
+PhoneNumber.number = string
+PhoneNumber._parse_k = parse_k
+PhoneNumber._check_k = check_k
+PhoneNumber._check_kv = check_kv
+PhoneNumber.new = function(init)
+    return orm_base.new(PhoneNumber, init)
+end
 
 setmetatable(map_integer_Person, {
     __tostring = function()
@@ -173,121 +280,14 @@ AddressBook.new = function(init)
     return orm_base.new(AddressBook, init)
 end
 
-setmetatable(IntKeyStringValue, {
-    __tostring = function()
-        return "schema_IntKeyStringValue"
-    end,
-})
-IntKeyStringValue.key = integer
-IntKeyStringValue.value = string
-IntKeyStringValue._parse_k = parse_k
-IntKeyStringValue._check_k = check_k
-IntKeyStringValue._check_kv = check_kv
-IntKeyStringValue.new = function(init)
-    return orm_base.new(IntKeyStringValue, init)
-end
-
-setmetatable(PhoneNumber, {
-    __tostring = function()
-        return "schema_PhoneNumber"
-    end,
-})
-PhoneNumber.number = string
-PhoneNumber.type = integer
-PhoneNumber._parse_k = parse_k
-PhoneNumber._check_k = check_k
-PhoneNumber._check_kv = check_kv
-PhoneNumber.new = function(init)
-    return orm_base.new(PhoneNumber, init)
-end
-
-setmetatable(map_string_integer, {
-    __tostring = function()
-        return "schema_map_string_integer"
-    end,
-    __index = function(t, k)
-        return integer
-    end,
-})
-map_string_integer._parse_k = parse_k_func(string)
-map_string_integer._check_k = check_k_func(string)
-map_string_integer._check_kv = check_kv_func(string, integer)
-map_string_integer.new = function(init)
-    return orm_base.new(map_string_integer, init)
-end
-
-setmetatable(map_integer_string, {
-    __tostring = function()
-        return "schema_map_integer_string"
-    end,
-    __index = function(t, k)
-        return string
-    end,
-})
-map_integer_string._parse_k = parse_k_func(integer)
-map_integer_string._check_k = check_k_func(integer)
-map_integer_string._check_kv = check_kv_func(integer, string)
-map_integer_string.new = function(init)
-    return orm_base.new(map_integer_string, init)
-end
-
-setmetatable(map_string_PhoneNumber, {
-    __tostring = function()
-        return "schema_map_string_PhoneNumber"
-    end,
-    __index = function(t, k)
-        return PhoneNumber
-    end,
-})
-map_string_PhoneNumber._parse_k = parse_k_func(string)
-map_string_PhoneNumber._check_k = check_k_func(string)
-map_string_PhoneNumber._check_kv = check_kv_func(string, PhoneNumber)
-map_string_PhoneNumber.new = function(init)
-    return orm_base.new(map_string_PhoneNumber, init)
-end
-
-setmetatable(arr_PhoneNumber, {
-    __tostring = function()
-        return "schema_arr_PhoneNumber"
-    end,
-    __index = function(t, k)
-        return PhoneNumber
-    end,
-})
-arr_PhoneNumber._parse_k = parse_k_func(integer)
-arr_PhoneNumber._check_k = check_k_func(integer)
-arr_PhoneNumber._check_kv = check_kv_func(integer, PhoneNumber)
-arr_PhoneNumber.new = function(init)
-    return orm_base.new(arr_PhoneNumber, init)
-end
-
-setmetatable(Person, {
-    __tostring = function()
-        return "schema_Person"
-    end,
-})
-Person.phonemap = map_string_integer
-Person.i2s = map_integer_string
-Person.id = integer
-Person.phonemapkv = map_string_PhoneNumber
-Person.onephone = PhoneNumber
-Person.name = string
-Person.phone = arr_PhoneNumber
-Person._parse_k = parse_k
-Person._check_k = check_k
-Person._check_kv = check_kv
-Person.new = function(init)
-    return orm_base.new(Person, init)
-end
-
 return {
+    IntKeyStringValue = IntKeyStringValue,
+    Person = Person,
+    map_integer_string = map_integer_string,
+    arr_PhoneNumber = arr_PhoneNumber,
+    map_string_integer = map_string_integer,
+    map_string_PhoneNumber = map_string_PhoneNumber,
+    PhoneNumber = PhoneNumber,
     AddressBook = AddressBook,
     map_integer_Person = map_integer_Person,
-    IntKeyStringValue = IntKeyStringValue,
-    PhoneNumber = PhoneNumber,
-    Person = Person,
-    map_string_integer = map_string_integer,
-    map_integer_string = map_integer_string,
-    map_string_PhoneNumber = map_string_PhoneNumber,
-    arr_PhoneNumber = arr_PhoneNumber,
 }
