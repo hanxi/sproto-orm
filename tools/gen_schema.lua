@@ -16,16 +16,16 @@ if not output_filename then
 end
 
 local function read_file(path)
-  local handle = io.open(path, "r")
-  local ret = handle:read("*a")
-  handle:close()
-  return ret
+    local handle = io.open(path, "r")
+    local ret = handle:read("*a")
+    handle:close()
+    return ret
 end
 
 local function write_file(path, data, mode)
-  local handle = io.open(path, mode)
-  handle:write(data)
-  handle:close()
+    local handle = io.open(path, mode)
+    handle:write(data)
+    handle:close()
 end
 
 local s = read_file(input_filename)
@@ -38,7 +38,8 @@ function interp(s, tab)
     end))
 end
 
-local head = sformat([[
+local head = sformat(
+    [[
 -- Code generated from %s
 -- DO NOT EDIT!
 
@@ -51,84 +52,96 @@ local orm_base = require("orm_base")
 local tointeger = math.tointeger
 local sformat = string.format
 
-local number_type = setmetatable({}, {
+local number = setmetatable({
+    type = "number",
+}, {
     __tostring = function()
         return "schema_number"
     end,
 })
-local number = setmetatable({}, {
-    __metatable = number_type,
-})
 
-local integer_type = setmetatable({}, {
+local integer = setmetatable({
+    type = "integer",
+}, {
     __tostring = function()
         return "schema_integer"
     end,
 })
-local integer = setmetatable({}, {
-    __metatable = integer_type,
-})
 
-local string_type = setmetatable({}, {
+local string = setmetatable({
+    type = "string",
+}, {
     __tostring = function()
         return "schema_string"
     end,
 })
-local string = setmetatable({}, {
-    __metatable = string_type,
-})
 
-local boolean_type = setmetatable({}, {
+local boolean = setmetatable({
+    type = "boolean",
+}, {
     __tostring = function()
         return "schema_boolean"
     end,
 })
-local boolean = setmetatable({}, {
-    __metatable = boolean_type,
-})
+
+local function _parse_k_tp(k, need_tp)
+    if need_tp == integer then
+        nk = tointeger(k)
+        if tointeger(k) == nil then
+            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp)))
+        end
+        return nk
+    elseif need_tp == string then
+        return tostring(k)
+    end
+    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp), tostring(k)))
+end
 
 local function _check_k_tp(k, need_tp)
-    local need_tp_mt =  getmetatable(need_tp)
-    if need_tp_mt == integer_type then
+    if need_tp == integer then
         if (type(k) ~= "number") or (tointeger(k) == nil) then
-            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp_mt)))
+            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == string_type then
+    elseif need_tp == string then
         if type(k) ~= "string" then
-            error(sformat("not equal k type. need string, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp_mt)))
-            return false
+            error(sformat("not equal k type. need string, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp)))
         end
         return
     end
-    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp_mt), tostring(k)))
+    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp), tostring(k)))
 end
 
 local function _check_v_tp(v, need_tp)
-    local need_tp_mt = getmetatable(need_tp)
-    if need_tp_mt == integer_type then
+    if need_tp == integer then
         if (type(v) ~= "number") or (tointeger(v) == nil) then
-            error(sformat("not equal v type. need integer, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need integer, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == number_type then
+    elseif need_tp == number then
         if type(v) ~= "number" then
-            error(sformat("not equal v type. need number, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need number, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == string_type then
+    elseif need_tp == string then
         if type(v) ~= "string" then
-            error(sformat("not equal v type. need string, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need string, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == boolean_type then
+    elseif need_tp == boolean then
         if type(v) ~= "boolean" then
-            error(sformat("not equal v type. need boolean, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need boolean, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
     end
-    if getmetatable(v) ~= need_tp_mt then
-        error(sformat("not equal v type. need_tp: %s, real_tp: %s, v: %s", tostring(need_tp_mt), tostring(getmetatable(v)), tostring(v)))
+    if v ~= need_tp then
+        error(sformat("not equal v type. need_tp: %s, v: %s", tostring(need_tp), tostring(v)))
+    end
+end
+
+local function parse_k_func(need_tp)
+    return function(self, k)
+        return _parse_k_tp(k, need_tp)
     end
 end
 
@@ -143,6 +156,14 @@ local function check_kv_func(k_need_tp, v_need_tp)
         _check_k_tp(k, k_need_tp)
         _check_v_tp(v, v_need_tp)
     end
+end
+
+local function parse_k(self, k)
+    local schema = self[k]
+    if not schema then
+        error(sformat("not exist key: %s", k))
+    end
+    return k
 end
 
 local function check_k(self, k)
@@ -163,62 +184,55 @@ end
 
 ]]
 
-
 local defines = {}
 
 local tmpl_message = [[
-setmetatable(${name}_type, {
+setmetatable(${name}, {
     __tostring = function()
         return "schema_${name}"
     end,
 })
 ${fields_str}
+${name}._parse_k = parse_k
 ${name}._check_k = check_k
 ${name}._check_kv = check_kv
 ${name}.new = function(init)
     return orm_base.new(${name}, init)
 end
-setmetatable(${name}, {
-    __metatable = ${name}_type,
-})
 ]]
 
 local tmpl_map = [[
-setmetatable(map_${kv_type}_type, {
+setmetatable(map_${kv_type}, {
     __tostring = function()
         return "schema_map_${kv_type}"
     end,
+    __index = function(t, k)
+        return ${value_type}
+    end,
 })
+map_${kv_type}._parse_k = parse_k_func(${key_type})
 map_${kv_type}._check_k = check_k_func(${key_type})
 map_${kv_type}._check_kv = check_kv_func(${key_type}, ${value_type})
 map_${kv_type}.new = function(init)
     return orm_base.new(map_${kv_type}, init)
 end
-setmetatable(map_${kv_type}, {
-    __metatable = map_${kv_type}_type,
+]]
+
+local tmpl_arr = [[
+setmetatable(arr_${value_type}, {
+    __tostring = function()
+        return "schema_arr_${value_type}"
+    end,
     __index = function(t, k)
         return ${value_type}
     end,
 })
-]]
-
-local tmpl_arr = [[
-setmetatable(arr_${value_type}_type, {
-    __tostring = function()
-        return "schema_arr_${value_type}"
-    end,
-})
+arr_${value_type}._parse_k = parse_k_func(integer)
 arr_${value_type}._check_k = check_k_func(integer)
 arr_${value_type}._check_kv = check_kv_func(integer, ${value_type})
 arr_${value_type}.new = function(init)
     return orm_base.new(arr_${value_type}, init)
 end
-setmetatable(arr_${value_type}, {
-    __metatable = arr_${value_type}_type,
-    __index = function(t, k)
-        return ${value_type}
-    end,
-})
 ]]
 
 local type2name = {
@@ -240,7 +254,7 @@ local bodys = {}
 local maps = {}
 local arrs = {}
 for name, fields in pairs(schema_define) do
-    tinsert(defines, sformat("local %s, %s_type = {}, {}", name, name))
+    tinsert(defines, sformat('local %s = { type = "struct" }', name))
     tinsert(returns, sformat("    %s = %s,", name, name))
 
     local fields_line = {}
@@ -253,14 +267,14 @@ for name, fields in pairs(schema_define) do
             if not maps[kv_type] then
                 maps[kv_type] = true
                 tinsert(bodys, interp(tmpl_map, { key_type = key_type, value_type = value_type, kv_type = kv_type }))
-                tinsert(defines, sformat("local map_%s, map_%s_type = {}, {}", kv_type, kv_type))
+                tinsert(defines, sformat('local map_%s = { type = "map"}', kv_type))
                 tinsert(returns, sformat("    map_%s = map_%s,", kv_type, kv_type))
             end
         elseif tp_name == "array" then
             local field_type = typename(field.item)
             arrs[field_type] = true
             tinsert(bodys, interp(tmpl_arr, { value_type = field_type }))
-            tinsert(defines, sformat("local arr_%s, arr_%s_type = {}, {}", field_type, field_type))
+            tinsert(defines, sformat('local arr_%s = { type = "array" }', field_type))
             tinsert(returns, sformat("    arr_%s = arr_%s,", field_type, field_type))
         end
 

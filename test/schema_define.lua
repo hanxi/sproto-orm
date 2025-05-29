@@ -8,7 +8,20 @@ return {
       value = "Person"
     }
   },
+  IntKeyStringValue = {
+    key = {
+      type = "integer"
+    },
+    value = {
+      type = "string"
+    }
+  },
   Person = {
+    i2s = {
+      key = "integer",
+      type = "map",
+      value = "string"
+    },
     id = {
       type = "integer"
     },

@@ -59,7 +59,7 @@ local function mark_dirty(doc)
 end
 
 local function doc_change_value(doc, k, v)
-    if doc._schema ~= nil and v ~= nil then
+    if v ~= nil then
         doc._schema:_check_kv(k, v)
     end
     if v ~= doc[k] then
@@ -75,10 +75,10 @@ local function doc_change_recursively(doc, k, v)
     local lv = doc._stage[k]
     if getmetatable(lv) ~= tracedoc_type then
         lv = doc._changed_values[k]
-        local schema = doc._schema[k]
         if v._schema then
             doc._schema:_check_kv(k, v._schema)
         end
+        local schema = doc._schema[k]
         if getmetatable(lv) ~= tracedoc_type then
             -- last version is not a table, new a empty one
             lv = _new_doc(schema, nil)
@@ -127,12 +127,15 @@ local function doc_change(doc, k, v)
         error(sformat("const can't change. k:%s, v:%s", k, v))
     end
 
+    -- parse k
+    k = doc._schema:_parse_k(k)
+
     local recursively = false
     if type(v) == "table" then
         local vt = getmetatable(v)
         recursively = vt == nil or vt == tracedoc_type
 
-        if doc._schema and v ~= nil and v._schema then
+        if v ~= nil and v._schema then
             doc._schema:_check_kv(k, v._schema)
         end
 
@@ -223,9 +226,7 @@ _new_doc = function(schema, init)
         for k, v in pairs(init) do
             -- deepcopy v
             if getmetatable(v) == tracedoc_type then
-                local _schema = nil
-                _schema = schema[k]
-                doc[k] = _new_doc(_schema, v)
+                doc[k] = _new_doc(schema[k], v)
             else
                 doc[k] = v
             end
@@ -280,10 +281,17 @@ local function _commit_mongo(doc, result, prefix)
             changed_keys[k] = nil
             changed_values[k] = nil
             if result then
-                local key = prefix and prefix .. k or tostring(k)
+                -- TODO: 优化 prefix，改为 path 数组
+                local key
+                if doc._schema.type == "array" then
+                    key = prefix and (prefix .. (k - 1)) or tostring(k - 1)
+                else
+                    key = prefix and (prefix .. k) or tostring(k)
+                end
                 if v == nil then
                     result["$unset"][key] = ""
                 else
+                    print("fuck1", key, k)
                     result["$set"][key] = v
                 end
                 result._n = result._n + 1
@@ -293,7 +301,12 @@ local function _commit_mongo(doc, result, prefix)
     for k, v in pairs(stage) do
         if getmetatable(v) == tracedoc_type and v._dirty then
             if result then
-                local key = prefix and prefix .. k or tostring(k)
+                local key
+                if doc._schema.type == "array" then
+                    key = prefix and (prefix .. (k - 1)) or tostring(k - 1)
+                else
+                    key = prefix and (prefix .. k) or tostring(k)
+                end
                 local change
                 if v._all_dirty then
                     change = _commit_mongo(v)
@@ -306,6 +319,8 @@ local function _commit_mongo(doc, result, prefix)
                 end
                 if change then
                     if result["$set"][key] == nil and v._all_dirty then
+                        -- TODO: 序列化bson时，v如果是map，需要把key转为string
+                        print("fuck", key, v._schema)
                         result["$set"][key] = v
                         result._n = result._n + 1
                     end

@@ -5,84 +5,96 @@ local orm_base = require("orm_base")
 local tointeger = math.tointeger
 local sformat = string.format
 
-local number_type = setmetatable({}, {
+local number = setmetatable({
+    type = "number",
+}, {
     __tostring = function()
         return "schema_number"
     end,
 })
-local number = setmetatable({}, {
-    __metatable = number_type,
-})
 
-local integer_type = setmetatable({}, {
+local integer = setmetatable({
+    type = "integer",
+}, {
     __tostring = function()
         return "schema_integer"
     end,
 })
-local integer = setmetatable({}, {
-    __metatable = integer_type,
-})
 
-local string_type = setmetatable({}, {
+local string = setmetatable({
+    type = "string",
+}, {
     __tostring = function()
         return "schema_string"
     end,
 })
-local string = setmetatable({}, {
-    __metatable = string_type,
-})
 
-local boolean_type = setmetatable({}, {
+local boolean = setmetatable({
+    type = "boolean",
+}, {
     __tostring = function()
         return "schema_boolean"
     end,
 })
-local boolean = setmetatable({}, {
-    __metatable = boolean_type,
-})
+
+local function _parse_k_tp(k, need_tp)
+    if need_tp == integer then
+        nk = tointeger(k)
+        if tointeger(k) == nil then
+            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp)))
+        end
+        return nk
+    elseif need_tp == string then
+        return tostring(k)
+    end
+    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp), tostring(k)))
+end
 
 local function _check_k_tp(k, need_tp)
-    local need_tp_mt =  getmetatable(need_tp)
-    if need_tp_mt == integer_type then
+    if need_tp == integer then
         if (type(k) ~= "number") or (tointeger(k) == nil) then
-            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp_mt)))
+            error(sformat("not equal k type. need integer, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == string_type then
+    elseif need_tp == string then
         if type(k) ~= "string" then
-            error(sformat("not equal k type. need string, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp_mt)))
-            return false
+            error(sformat("not equal k type. need string, real: %s, k: %s, need_tp: %s", type(k), tostring(k), tostring(need_tp)))
         end
         return
     end
-    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp_mt), tostring(k)))
+    error(sformat("not support need_tp type: %s, k: %s", tostring(need_tp), tostring(k)))
 end
 
 local function _check_v_tp(v, need_tp)
-    local need_tp_mt = getmetatable(need_tp)
-    if need_tp_mt == integer_type then
+    if need_tp == integer then
         if (type(v) ~= "number") or (tointeger(v) == nil) then
-            error(sformat("not equal v type. need integer, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need integer, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == number_type then
+    elseif need_tp == number then
         if type(v) ~= "number" then
-            error(sformat("not equal v type. need number, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need number, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == string_type then
+    elseif need_tp == string then
         if type(v) ~= "string" then
-            error(sformat("not equal v type. need string, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need string, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
-    elseif need_tp_mt == boolean_type then
+    elseif need_tp == boolean then
         if type(v) ~= "boolean" then
-            error(sformat("not equal v type. need boolean, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp_mt)))
+            error(sformat("not equal v type. need boolean, real: %s, v: %s, need_tp: %s", type(v), tostring(v), tostring(need_tp)))
         end
         return
     end
-    if getmetatable(v) ~= need_tp_mt then
-        error(sformat("not equal v type. need_tp: %s, real_tp: %s, v: %s", tostring(need_tp_mt), tostring(getmetatable(v)), tostring(v)))
+    if v ~= need_tp then
+        error(sformat("not equal v type. need_tp: %s, v: %s", tostring(need_tp), tostring(v)))
+    end
+end
+
+local function parse_k_func(need_tp)
+    return function(self, k)
+        return _parse_k_tp(k, need_tp)
     end
 end
 
@@ -97,6 +109,14 @@ local function check_kv_func(k_need_tp, v_need_tp)
         _check_k_tp(k, k_need_tp)
         _check_v_tp(v, v_need_tp)
     end
+end
+
+local function parse_k(self, k)
+    local schema = self[k]
+    if not schema then
+        error(sformat("not exist key: %s", k))
+    end
+    return k
 end
 
 local function check_k(self, k)
@@ -115,138 +135,158 @@ local function check_kv(self, k, v)
     _check_v_tp(v, schema)
 end
 
-local AddressBook, AddressBook_type = {}, {}
-local map_integer_Person, map_integer_Person_type = {}, {}
-local PhoneNumber, PhoneNumber_type = {}, {}
-local Person, Person_type = {}, {}
-local map_string_PhoneNumber, map_string_PhoneNumber_type = {}, {}
-local map_string_integer, map_string_integer_type = {}, {}
-local arr_PhoneNumber, arr_PhoneNumber_type = {}, {}
+local AddressBook = { type = "struct" }
+local map_integer_Person = { type = "map"}
+local IntKeyStringValue = { type = "struct" }
+local PhoneNumber = { type = "struct" }
+local Person = { type = "struct" }
+local map_integer_string = { type = "map"}
+local map_string_PhoneNumber = { type = "map"}
+local map_string_integer = { type = "map"}
+local arr_PhoneNumber = { type = "array" }
 
-setmetatable(map_integer_Person_type, {
+setmetatable(map_integer_Person, {
     __tostring = function()
         return "schema_map_integer_Person"
     end,
+    __index = function(t, k)
+        return Person
+    end,
 })
+map_integer_Person._parse_k = parse_k_func(integer)
 map_integer_Person._check_k = check_k_func(integer)
 map_integer_Person._check_kv = check_kv_func(integer, Person)
 map_integer_Person.new = function(init)
     return orm_base.new(map_integer_Person, init)
 end
-setmetatable(map_integer_Person, {
-    __metatable = map_integer_Person_type,
-    __index = function(t, k)
-        return Person
-    end,
-})
 
-setmetatable(AddressBook_type, {
+setmetatable(AddressBook, {
     __tostring = function()
         return "schema_AddressBook"
     end,
 })
 AddressBook.person = map_integer_Person
+AddressBook._parse_k = parse_k
 AddressBook._check_k = check_k
 AddressBook._check_kv = check_kv
 AddressBook.new = function(init)
     return orm_base.new(AddressBook, init)
 end
-setmetatable(AddressBook, {
-    __metatable = AddressBook_type,
-})
 
-setmetatable(PhoneNumber_type, {
+setmetatable(IntKeyStringValue, {
+    __tostring = function()
+        return "schema_IntKeyStringValue"
+    end,
+})
+IntKeyStringValue.key = integer
+IntKeyStringValue.value = string
+IntKeyStringValue._parse_k = parse_k
+IntKeyStringValue._check_k = check_k
+IntKeyStringValue._check_kv = check_kv
+IntKeyStringValue.new = function(init)
+    return orm_base.new(IntKeyStringValue, init)
+end
+
+setmetatable(PhoneNumber, {
     __tostring = function()
         return "schema_PhoneNumber"
     end,
 })
-PhoneNumber.number = string
 PhoneNumber.type = integer
+PhoneNumber.number = string
+PhoneNumber._parse_k = parse_k
 PhoneNumber._check_k = check_k
 PhoneNumber._check_kv = check_kv
 PhoneNumber.new = function(init)
     return orm_base.new(PhoneNumber, init)
 end
-setmetatable(PhoneNumber, {
-    __metatable = PhoneNumber_type,
-})
 
-setmetatable(map_string_PhoneNumber_type, {
+setmetatable(map_integer_string, {
+    __tostring = function()
+        return "schema_map_integer_string"
+    end,
+    __index = function(t, k)
+        return string
+    end,
+})
+map_integer_string._parse_k = parse_k_func(integer)
+map_integer_string._check_k = check_k_func(integer)
+map_integer_string._check_kv = check_kv_func(integer, string)
+map_integer_string.new = function(init)
+    return orm_base.new(map_integer_string, init)
+end
+
+setmetatable(map_string_PhoneNumber, {
     __tostring = function()
         return "schema_map_string_PhoneNumber"
     end,
+    __index = function(t, k)
+        return PhoneNumber
+    end,
 })
+map_string_PhoneNumber._parse_k = parse_k_func(string)
 map_string_PhoneNumber._check_k = check_k_func(string)
 map_string_PhoneNumber._check_kv = check_kv_func(string, PhoneNumber)
 map_string_PhoneNumber.new = function(init)
     return orm_base.new(map_string_PhoneNumber, init)
 end
-setmetatable(map_string_PhoneNumber, {
-    __metatable = map_string_PhoneNumber_type,
-    __index = function(t, k)
-        return PhoneNumber
-    end,
-})
 
-setmetatable(map_string_integer_type, {
+setmetatable(map_string_integer, {
     __tostring = function()
         return "schema_map_string_integer"
     end,
+    __index = function(t, k)
+        return integer
+    end,
 })
+map_string_integer._parse_k = parse_k_func(string)
 map_string_integer._check_k = check_k_func(string)
 map_string_integer._check_kv = check_kv_func(string, integer)
 map_string_integer.new = function(init)
     return orm_base.new(map_string_integer, init)
 end
-setmetatable(map_string_integer, {
-    __metatable = map_string_integer_type,
-    __index = function(t, k)
-        return integer
-    end,
-})
 
-setmetatable(arr_PhoneNumber_type, {
+setmetatable(arr_PhoneNumber, {
     __tostring = function()
         return "schema_arr_PhoneNumber"
     end,
+    __index = function(t, k)
+        return PhoneNumber
+    end,
 })
+arr_PhoneNumber._parse_k = parse_k_func(integer)
 arr_PhoneNumber._check_k = check_k_func(integer)
 arr_PhoneNumber._check_kv = check_kv_func(integer, PhoneNumber)
 arr_PhoneNumber.new = function(init)
     return orm_base.new(arr_PhoneNumber, init)
 end
-setmetatable(arr_PhoneNumber, {
-    __metatable = arr_PhoneNumber_type,
-    __index = function(t, k)
-        return PhoneNumber
-    end,
-})
 
-setmetatable(Person_type, {
+setmetatable(Person, {
     __tostring = function()
         return "schema_Person"
     end,
 })
+Person.i2s = map_integer_string
 Person.phonemapkv = map_string_PhoneNumber
-Person.onephone = PhoneNumber
-Person.name = string
 Person.phonemap = map_string_integer
 Person.id = integer
 Person.phone = arr_PhoneNumber
+Person.name = string
+Person.onephone = PhoneNumber
+Person._parse_k = parse_k
 Person._check_k = check_k
 Person._check_kv = check_kv
 Person.new = function(init)
     return orm_base.new(Person, init)
 end
-setmetatable(Person, {
-    __metatable = Person_type,
-})
 
 return {
     AddressBook = AddressBook,
     map_integer_Person = map_integer_Person,
+    IntKeyStringValue = IntKeyStringValue,
     PhoneNumber = PhoneNumber,
     Person = Person,
+    map_integer_string = map_integer_string,
     map_string_PhoneNumber = map_string_PhoneNumber,
     map_string_integer = map_string_integer,
     arr_PhoneNumber = arr_PhoneNumber,

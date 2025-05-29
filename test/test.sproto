@@ -3,6 +3,11 @@
     type  1000: integer
 }
 
+.IntKeyStringValue {
+    key 0: integer
+    value 1: string
+}
+
 .Person {
 	name 0 : string
 	id 1 : integer
@@ -12,6 +17,8 @@
 	phonemap 5 : *PhoneNumber()
     phonemapkv 6 : *PhoneNumber(number)
 	onephone 7 : PhoneNumber
+
+    i2s 8 : *IntKeyStringValue()
 }
 
 .AddressBook {
