@@ -1,4 +1,4 @@
--- 测试命令 lua tools/sproto2lua.lua test/test.sproto test/schema_define.lua
+-- 测试命令 lua tools/sproto2lua.lua test/schema_define.lua test/test1.sproto test/test2.sproto
 
 -- 获取脚本所在的完整路径
 local script_path = arg[0]
@@ -24,14 +24,28 @@ package.path = package.path .. ";" .. script_directory .. "sprotodump/?.lua"
 
 local sformat = string.format
 
--- 读取 proto 文件内容
-local filename = arg[1]
+-- 写入文件内容
+local outfilename = arg[1]
 
 -- 检查文件名是否提供
-if not filename then
+if not outfilename then
+    print("No output file provided")
+    return
+end
+
+-- 读取 sproto 文件内容
+local sproto_files = {}
+for i = 2, #arg do
+  table.insert(sproto_files, arg[i])
+end
+
+-- 检查文件名是否提供
+if #sproto_files == 0 then
     print("No .sproto file provided")
     return
 end
+table.sort(sproto_files)
+local str_sproto_files = table.concat(sproto_files, " ")
 
 local sprotodump_table = require "module.table"
 local sprotodump_parse_core = require "core"
@@ -48,7 +62,7 @@ local function _gen_trunk_list(sproto_file, namespace)
     return trunk_list
 end
 
-local trunk_list = _gen_trunk_list({filename})
+local trunk_list = _gen_trunk_list(sproto_files)
 local trunk, build = sprotodump_parse_core.gen_trunk(trunk_list)
 -- print(trunk)
 -- print(build)
@@ -80,13 +94,7 @@ for k,v in pairs(build.type) do
     end
 end
 
--- 写入文件内容
-local outfilename = arg[2]
 
--- 检查文件名是否提供
-if not outfilename then
-    outfilename = "schema_define.lua"
-end
 
 -- 打开文件
 local outfile = io.open(outfilename, "w")
@@ -101,7 +109,7 @@ end
 local fmt_file_header = sformat([[
 -- Code generated from %s
 -- DO NOT EDIT!
-return ]], filename)
+return ]], str_sproto_files)
 
 local s = sprotodump_serpent.block(cls_map, {comment=false})
 local out_content = table.concat({fmt_file_header, s}, '')

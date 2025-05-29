@@ -320,6 +320,7 @@ local function _commit_mongo(doc, result, prefix)
                 if change then
                     if result["$set"][key] == nil and v._all_dirty then
                         -- TODO: 序列化bson时，v如果是map，需要把key转为string
+                        -- 序列化前修改 pairs, 序列化后还原 pairs
                         print("fuck", key, v._schema)
                         result["$set"][key] = v
                         result._n = result._n + 1

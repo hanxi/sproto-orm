@@ -140,9 +140,9 @@ local map_integer_Person = { type = "map"}
 local IntKeyStringValue = { type = "struct" }
 local PhoneNumber = { type = "struct" }
 local Person = { type = "struct" }
+local map_string_integer = { type = "map"}
 local map_integer_string = { type = "map"}
 local map_string_PhoneNumber = { type = "map"}
-local map_string_integer = { type = "map"}
 local arr_PhoneNumber = { type = "array" }
 
 setmetatable(map_integer_Person, {
@@ -192,13 +192,28 @@ setmetatable(PhoneNumber, {
         return "schema_PhoneNumber"
     end,
 })
-PhoneNumber.type = integer
 PhoneNumber.number = string
+PhoneNumber.type = integer
 PhoneNumber._parse_k = parse_k
 PhoneNumber._check_k = check_k
 PhoneNumber._check_kv = check_kv
 PhoneNumber.new = function(init)
     return orm_base.new(PhoneNumber, init)
+end
+
+setmetatable(map_string_integer, {
+    __tostring = function()
+        return "schema_map_string_integer"
+    end,
+    __index = function(t, k)
+        return integer
+    end,
+})
+map_string_integer._parse_k = parse_k_func(string)
+map_string_integer._check_k = check_k_func(string)
+map_string_integer._check_kv = check_kv_func(string, integer)
+map_string_integer.new = function(init)
+    return orm_base.new(map_string_integer, init)
 end
 
 setmetatable(map_integer_string, {
@@ -231,21 +246,6 @@ map_string_PhoneNumber.new = function(init)
     return orm_base.new(map_string_PhoneNumber, init)
 end
 
-setmetatable(map_string_integer, {
-    __tostring = function()
-        return "schema_map_string_integer"
-    end,
-    __index = function(t, k)
-        return integer
-    end,
-})
-map_string_integer._parse_k = parse_k_func(string)
-map_string_integer._check_k = check_k_func(string)
-map_string_integer._check_kv = check_kv_func(string, integer)
-map_string_integer.new = function(init)
-    return orm_base.new(map_string_integer, init)
-end
-
 setmetatable(arr_PhoneNumber, {
     __tostring = function()
         return "schema_arr_PhoneNumber"
@@ -266,13 +266,13 @@ setmetatable(Person, {
         return "schema_Person"
     end,
 })
-Person.i2s = map_integer_string
-Person.phonemapkv = map_string_PhoneNumber
 Person.phonemap = map_string_integer
+Person.i2s = map_integer_string
 Person.id = integer
-Person.phone = arr_PhoneNumber
-Person.name = string
+Person.phonemapkv = map_string_PhoneNumber
 Person.onephone = PhoneNumber
+Person.name = string
+Person.phone = arr_PhoneNumber
 Person._parse_k = parse_k
 Person._check_k = check_k
 Person._check_kv = check_kv
@@ -286,8 +286,8 @@ return {
     IntKeyStringValue = IntKeyStringValue,
     PhoneNumber = PhoneNumber,
     Person = Person,
+    map_string_integer = map_string_integer,
     map_integer_string = map_integer_string,
     map_string_PhoneNumber = map_string_PhoneNumber,
-    map_string_integer = map_string_integer,
     arr_PhoneNumber = arr_PhoneNumber,
 }

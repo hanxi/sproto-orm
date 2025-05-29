@@ -1,11 +1,11 @@
--- 测试命令 lua tools/gen_schema.lua test/schema_define.lua test/schema.lua
+-- 测试命令 lua tools/gen_schema.lua test/schema.lua test/schema_define.lua
 
 local sformat = string.format
 local tconcat = table.concat
 local tinsert = table.insert
 
-local input_filename = arg[1]
-local output_filename = arg[2]
+local output_filename = arg[1]
+local input_filename = arg[2]
 
 -- 检查文件名是否提供
 if not input_filename then
