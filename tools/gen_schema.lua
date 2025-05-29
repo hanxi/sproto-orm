@@ -32,10 +32,28 @@ local s = read_file(input_filename)
 local schema_define = load(s)()
 print("Loaded schema define from: " .. input_filename)
 
-function interp(s, tab)
+local function interp(s, tab)
     return (s:gsub("($%b{})", function(w)
         return tab[w:sub(3, -2)] or w
     end))
+end
+
+local function sort_pairs(t, f)
+    local a = {}
+    for n in pairs(t) do
+        table.insert(a, n)
+    end
+    table.sort(a, f)
+    local i = 0
+    local iter = function()
+        i = i + 1
+        if a[i] == nil then
+            return nil
+        else
+            return a[i], t[a[i]]
+        end
+    end
+    return iter
 end
 
 local head = sformat(
@@ -253,12 +271,12 @@ tinsert(returns, "return {")
 local bodys = {}
 local maps = {}
 local arrs = {}
-for name, fields in pairs(schema_define) do
+for name, fields in sort_pairs(schema_define) do
     tinsert(defines, sformat('local %s = { type = "struct" }', name))
     tinsert(returns, sformat("    %s = %s,", name, name))
 
     local fields_line = {}
-    for field_name, field in pairs(fields) do
+    for field_name, field in sort_pairs(fields) do
         local tp_name = field.type
         if tp_name == "map" then
             local key_type = typename(field.key)

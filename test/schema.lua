@@ -135,6 +135,8 @@ local function check_kv(self, k, v)
     _check_v_tp(v, schema)
 end
 
+local AddressBook = { type = "struct" }
+local map_integer_Person = { type = "map"}
 local IntKeyStringValue = { type = "struct" }
 local Person = { type = "struct" }
 local map_integer_string = { type = "map"}
@@ -142,16 +144,42 @@ local arr_PhoneNumber = { type = "array" }
 local map_string_integer = { type = "map"}
 local map_string_PhoneNumber = { type = "map"}
 local PhoneNumber = { type = "struct" }
-local AddressBook = { type = "struct" }
-local map_integer_Person = { type = "map"}
+
+setmetatable(map_integer_Person, {
+    __tostring = function()
+        return "schema_map_integer_Person"
+    end,
+    __index = function(t, k)
+        return Person
+    end,
+})
+map_integer_Person._parse_k = parse_k_func(integer)
+map_integer_Person._check_k = check_k_func(integer)
+map_integer_Person._check_kv = check_kv_func(integer, Person)
+map_integer_Person.new = function(init)
+    return orm_base.new(map_integer_Person, init)
+end
+
+setmetatable(AddressBook, {
+    __tostring = function()
+        return "schema_AddressBook"
+    end,
+})
+AddressBook.person = map_integer_Person
+AddressBook._parse_k = parse_k
+AddressBook._check_k = check_k
+AddressBook._check_kv = check_kv
+AddressBook.new = function(init)
+    return orm_base.new(AddressBook, init)
+end
 
 setmetatable(IntKeyStringValue, {
     __tostring = function()
         return "schema_IntKeyStringValue"
     end,
 })
-IntKeyStringValue.value = string
 IntKeyStringValue.key = integer
+IntKeyStringValue.value = string
 IntKeyStringValue._parse_k = parse_k
 IntKeyStringValue._check_k = check_k
 IntKeyStringValue._check_kv = check_kv
@@ -225,12 +253,12 @@ setmetatable(Person, {
     end,
 })
 Person.i2s = map_integer_string
+Person.id = integer
 Person.name = string
+Person.onephone = PhoneNumber
 Person.phone = arr_PhoneNumber
 Person.phonemap = map_string_integer
 Person.phonemapkv = map_string_PhoneNumber
-Person.id = integer
-Person.onephone = PhoneNumber
 Person._parse_k = parse_k
 Person._check_k = check_k
 Person._check_kv = check_kv
@@ -243,8 +271,8 @@ setmetatable(PhoneNumber, {
         return "schema_PhoneNumber"
     end,
 })
-PhoneNumber.type = integer
 PhoneNumber.number = string
+PhoneNumber.type = integer
 PhoneNumber._parse_k = parse_k
 PhoneNumber._check_k = check_k
 PhoneNumber._check_kv = check_kv
@@ -252,35 +280,9 @@ PhoneNumber.new = function(init)
     return orm_base.new(PhoneNumber, init)
 end
 
-setmetatable(map_integer_Person, {
-    __tostring = function()
-        return "schema_map_integer_Person"
-    end,
-    __index = function(t, k)
-        return Person
-    end,
-})
-map_integer_Person._parse_k = parse_k_func(integer)
-map_integer_Person._check_k = check_k_func(integer)
-map_integer_Person._check_kv = check_kv_func(integer, Person)
-map_integer_Person.new = function(init)
-    return orm_base.new(map_integer_Person, init)
-end
-
-setmetatable(AddressBook, {
-    __tostring = function()
-        return "schema_AddressBook"
-    end,
-})
-AddressBook.person = map_integer_Person
-AddressBook._parse_k = parse_k
-AddressBook._check_k = check_k
-AddressBook._check_kv = check_kv
-AddressBook.new = function(init)
-    return orm_base.new(AddressBook, init)
-end
-
 return {
+    AddressBook = AddressBook,
+    map_integer_Person = map_integer_Person,
     IntKeyStringValue = IntKeyStringValue,
     Person = Person,
     map_integer_string = map_integer_string,
@@ -288,6 +290,4 @@ return {
     map_string_integer = map_string_integer,
     map_string_PhoneNumber = map_string_PhoneNumber,
     PhoneNumber = PhoneNumber,
-    AddressBook = AddressBook,
-    map_integer_Person = map_integer_Person,
 }
