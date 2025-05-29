@@ -1,4 +1,4 @@
-package.path = package.path .. ";../?.lua"
+package.path = package.path .. ";../?.lua;../?/init.lua"
 
 local serpent = require("tools.sprotodump.serpent")
 

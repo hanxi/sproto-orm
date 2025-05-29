@@ -1,4 +1,4 @@
-local orm_base = require("orm_base")
+local orm_base = require("orm.orm_base")
 
 local orm = {}
 orm.new = orm_base.new

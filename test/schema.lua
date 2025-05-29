@@ -1,7 +1,7 @@
 -- Code generated from schema_define.lua
 -- DO NOT EDIT!
 
-local orm_base = require("orm_base")
+local orm_base = require("orm.orm_base")
 local tointeger = math.tointeger
 local sformat = string.format
 
