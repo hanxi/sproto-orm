@@ -66,7 +66,7 @@ local head = sformat(
 )
 
 local schema_base = [[
-local orm_base = require("orm.orm_base")
+local orm = require "orm"
 local tointeger = math.tointeger
 local sformat = string.format
 
@@ -215,7 +215,7 @@ ${name}._parse_k = parse_k
 ${name}._check_k = check_k
 ${name}._check_kv = check_kv
 ${name}.new = function(init)
-    return orm_base.new(${name}, init)
+    return orm.new(${name}, init)
 end
 ]]
 
@@ -232,7 +232,7 @@ map_${kv_type}._parse_k = parse_k_func(${key_type})
 map_${kv_type}._check_k = check_k_func(${key_type})
 map_${kv_type}._check_kv = check_kv_func(${key_type}, ${value_type})
 map_${kv_type}.new = function(init)
-    return orm_base.new(map_${kv_type}, init)
+    return orm.new(map_${kv_type}, init)
 end
 ]]
 
@@ -249,7 +249,7 @@ arr_${value_type}._parse_k = parse_k_func(integer)
 arr_${value_type}._check_k = check_k_func(integer)
 arr_${value_type}._check_kv = check_kv_func(integer, ${value_type})
 arr_${value_type}.new = function(init)
-    return orm_base.new(arr_${value_type}, init)
+    return orm.new(arr_${value_type}, init)
 end
 ]]
 

@@ -2,18 +2,17 @@ package.path = package.path .. ";../?.lua;../?/init.lua"
 
 local serpent = require("tools.sprotodump.serpent")
 
-local schema = require("schema")
-local orm = require("orm")
-orm.init(schema)
+local schema = require "schema"
+local orm = require "orm"
 
-local phone = orm.PhoneNumber.new({
+local phone = schema.PhoneNumber.new({
     number = "1234567890",
     type = 1,
 })
-local address_book = orm.AddressBook.new()
+local address_book = schema.AddressBook.new()
 local id = 10086
-address_book.person = orm.AddressBook.person.new()
-address_book.person[id] = orm.Person.new({
+address_book.person = schema.AddressBook.person.new()
+address_book.person[id] = schema.Person.new({
     name = "John Doe",
     id = id,
     phone = { phone },

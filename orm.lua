@@ -6,14 +6,14 @@ local rawset = rawset
 local table = table
 local sformat = string.format
 
-local orm_base = {}
+local orm = {}
 local NULL = setmetatable({}, {
     __tostring = function()
         return "NULL"
     end,
 }) -- nil
-orm_base.null = NULL
-local tracedoc_type = setmetatable({}, {
+orm.null = NULL
+local ormdoc_type = setmetatable({}, {
     __tostring = function()
         return "ORM"
     end,
@@ -73,13 +73,13 @@ end
 local _new_doc = nil
 local function doc_change_recursively(doc, k, v)
     local lv = doc._stage[k]
-    if getmetatable(lv) ~= tracedoc_type then
+    if getmetatable(lv) ~= ormdoc_type then
         lv = doc._changed_values[k]
         if v._schema then
             doc._schema:_check_kv(k, v._schema)
         end
         local schema = doc._schema[k]
-        if getmetatable(lv) ~= tracedoc_type then
+        if getmetatable(lv) ~= ormdoc_type then
             -- last version is not a table, new a empty one
             lv = _new_doc(schema, nil)
         else
@@ -133,7 +133,7 @@ local function doc_change(doc, k, v)
     local recursively = false
     if type(v) == "table" then
         local vt = getmetatable(v)
-        recursively = vt == nil or vt == tracedoc_type
+        recursively = vt == nil or vt == ormdoc_type
 
         if v ~= nil and v._schema then
             doc._schema:_check_kv(k, v._schema)
@@ -154,7 +154,7 @@ end
 
 -- refer to table.insert()
 local function doc_insert(doc, index, v)
-    local len = orm_base.len(doc)
+    local len = orm.len(doc)
     if v == nil then
         v = index
         index = len + 1
@@ -168,7 +168,7 @@ end
 
 -- refer to table.remove()
 local function doc_remove(doc, index)
-    local len = orm_base.len(doc)
+    local len = orm.len(doc)
     index = index or len
 
     local v = doc[index]
@@ -182,14 +182,14 @@ local function doc_remove(doc, index)
     return v
 end
 
-orm_base.len = doc_len
-orm_base.next = doc_next
-orm_base.pairs = doc_pairs
-orm_base.ipairs = doc_ipairs
-orm_base.unpack = doc_unpack
-orm_base.concat = doc_concat
-orm_base.insert = doc_insert
-orm_base.remove = doc_remove
+orm.len = doc_len
+orm.next = doc_next
+orm.pairs = doc_pairs
+orm.ipairs = doc_ipairs
+orm.unpack = doc_unpack
+orm.concat = doc_concat
+orm.insert = doc_insert
+orm.remove = doc_remove
 
 _new_doc = function(schema, init)
     local doc_stage = {}
@@ -220,12 +220,12 @@ _new_doc = function(schema, init)
         __pairs = doc_pairs,
         __ipairs = doc_ipairs,
         __len = doc_len,
-        __metatable = tracedoc_type, -- avoid copy by ref
+        __metatable = ormdoc_type, -- avoid copy by ref
     })
     if init then
         for k, v in pairs(init) do
             -- deepcopy v
-            if getmetatable(v) == tracedoc_type then
+            if getmetatable(v) == ormdoc_type then
                 doc[k] = _new_doc(schema[k], v)
             else
                 doc[k] = v
@@ -235,18 +235,18 @@ _new_doc = function(schema, init)
     return doc
 end
 
-function orm_base.new(schema, init)
+function orm.new(schema, init)
     local doc = _new_doc(schema, init)
-    orm_base.commit_mongo(doc)
+    orm.commit_mongo(doc)
     return doc
 end
 
-function orm_base.check_type(doc)
+function orm.check_type(doc)
     if type(doc) ~= "table" then
         return false
     end
     local mt = getmetatable(doc)
-    return mt == tracedoc_type
+    return mt == ormdoc_type
 end
 
 local function unset_all_dirty(tab, visited)
@@ -262,7 +262,7 @@ local function unset_all_dirty(tab, visited)
 
     tab._all_dirty = false
     for k, v in pairs(tab) do
-        if getmetatable(v) == tracedoc_type then
+        if getmetatable(v) == ormdoc_type then
             unset_all_dirty(v, visited)
         end
     end
@@ -299,7 +299,7 @@ local function _commit_mongo(doc, result, prefix)
         end
     end
     for k, v in pairs(stage) do
-        if getmetatable(v) == tracedoc_type and v._dirty then
+        if getmetatable(v) == ormdoc_type and v._dirty then
             if result then
                 local key
                 if doc._schema.type == "array" then
@@ -337,7 +337,7 @@ local function _commit_mongo(doc, result, prefix)
     return dirty
 end
 
-function orm_base.commit_mongo(doc)
+function orm.commit_mongo(doc)
     local result = {
         ["$set"] = {},
         ["$unset"] = {},
@@ -354,4 +354,9 @@ function orm_base.commit_mongo(doc)
     return dirty, result
 end
 
-return orm_base
+function orm.is_dirty(doc)
+    -- TODO:
+    return true
+end
+
+return orm

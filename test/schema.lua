@@ -1,7 +1,7 @@
 -- Code generated from schema_define.lua
 -- DO NOT EDIT!
 
-local orm_base = require("orm.orm_base")
+local orm = require "orm"
 local tointeger = math.tointeger
 local sformat = string.format
 
@@ -157,7 +157,7 @@ map_integer_Person._parse_k = parse_k_func(integer)
 map_integer_Person._check_k = check_k_func(integer)
 map_integer_Person._check_kv = check_kv_func(integer, Person)
 map_integer_Person.new = function(init)
-    return orm_base.new(map_integer_Person, init)
+    return orm.new(map_integer_Person, init)
 end
 
 setmetatable(AddressBook, {
@@ -170,7 +170,7 @@ AddressBook._parse_k = parse_k
 AddressBook._check_k = check_k
 AddressBook._check_kv = check_kv
 AddressBook.new = function(init)
-    return orm_base.new(AddressBook, init)
+    return orm.new(AddressBook, init)
 end
 
 setmetatable(IntKeyStringValue, {
@@ -184,7 +184,7 @@ IntKeyStringValue._parse_k = parse_k
 IntKeyStringValue._check_k = check_k
 IntKeyStringValue._check_kv = check_kv
 IntKeyStringValue.new = function(init)
-    return orm_base.new(IntKeyStringValue, init)
+    return orm.new(IntKeyStringValue, init)
 end
 
 setmetatable(map_integer_string, {
@@ -199,7 +199,7 @@ map_integer_string._parse_k = parse_k_func(integer)
 map_integer_string._check_k = check_k_func(integer)
 map_integer_string._check_kv = check_kv_func(integer, string)
 map_integer_string.new = function(init)
-    return orm_base.new(map_integer_string, init)
+    return orm.new(map_integer_string, init)
 end
 
 setmetatable(arr_PhoneNumber, {
@@ -214,7 +214,7 @@ arr_PhoneNumber._parse_k = parse_k_func(integer)
 arr_PhoneNumber._check_k = check_k_func(integer)
 arr_PhoneNumber._check_kv = check_kv_func(integer, PhoneNumber)
 arr_PhoneNumber.new = function(init)
-    return orm_base.new(arr_PhoneNumber, init)
+    return orm.new(arr_PhoneNumber, init)
 end
 
 setmetatable(map_string_integer, {
@@ -229,7 +229,7 @@ map_string_integer._parse_k = parse_k_func(string)
 map_string_integer._check_k = check_k_func(string)
 map_string_integer._check_kv = check_kv_func(string, integer)
 map_string_integer.new = function(init)
-    return orm_base.new(map_string_integer, init)
+    return orm.new(map_string_integer, init)
 end
 
 setmetatable(map_string_PhoneNumber, {
@@ -244,7 +244,7 @@ map_string_PhoneNumber._parse_k = parse_k_func(string)
 map_string_PhoneNumber._check_k = check_k_func(string)
 map_string_PhoneNumber._check_kv = check_kv_func(string, PhoneNumber)
 map_string_PhoneNumber.new = function(init)
-    return orm_base.new(map_string_PhoneNumber, init)
+    return orm.new(map_string_PhoneNumber, init)
 end
 
 setmetatable(Person, {
@@ -263,7 +263,7 @@ Person._parse_k = parse_k
 Person._check_k = check_k
 Person._check_kv = check_kv
 Person.new = function(init)
-    return orm_base.new(Person, init)
+    return orm.new(Person, init)
 end
 
 setmetatable(PhoneNumber, {
@@ -277,7 +277,7 @@ PhoneNumber._parse_k = parse_k
 PhoneNumber._check_k = check_k
 PhoneNumber._check_kv = check_kv
 PhoneNumber.new = function(init)
-    return orm_base.new(PhoneNumber, init)
+    return orm.new(PhoneNumber, init)
 end
 
 return {
