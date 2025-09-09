@@ -72,8 +72,12 @@ local trunk, build = sprotodump_parse_core.gen_trunk(trunk_list)
 local cls_map = {}
 local protocols = {}
 for k, v in pairs(build.protocol) do
-    protocols[v.request] = true
-    protocols[v.response] = true
+    if v.request then
+        protocols[v.request] = true
+    end
+    if v.response then
+        protocols[v.response] = true
+    end
 end
 for k, v in pairs(build.type) do
     -- 排除协议
