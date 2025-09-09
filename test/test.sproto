@@ -24,3 +24,14 @@
 .AddressBook {
 	person 0: *Person(id)
 }
+
+login 101 {
+    request {
+        token 0: string # jwt token {account,ts,sign}
+    }
+    response {
+        code     0: integer
+        account  1: string
+        gamenode 2: string # 需要连的游戏节点
+    }
+}

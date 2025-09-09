@@ -36,7 +36,7 @@ end
 -- 读取 sproto 文件内容
 local sproto_files = {}
 for i = 2, #arg do
-  table.insert(sproto_files, arg[i])
+    table.insert(sproto_files, arg[i])
 end
 
 -- 检查文件名是否提供
@@ -54,10 +54,10 @@ local sprotodump_serpent = require "serpent"
 
 local function _gen_trunk_list(sproto_file, namespace)
     local trunk_list = {}
-    for i,v in ipairs(sproto_file) do
+    for i, v in ipairs(sproto_file) do
         namespace = namespace and util.file_basename(v) or nil
         local str = sprotodump_util.read_file(v)
-        table.insert(trunk_list, {str, v, namespace})
+        table.insert(trunk_list, { str, v, namespace })
     end
     return trunk_list
 end
@@ -66,35 +66,41 @@ local trunk_list = _gen_trunk_list(sproto_files)
 local trunk, build = sprotodump_parse_core.gen_trunk(trunk_list)
 -- print(trunk)
 -- print(build)
--- print(sprotodump_serpent.block(build.type, {comment=false}))
+-- print(sprotodump_serpent.block(build, { comment = false }))
 -- sprotodump_table(trunk, build, {})
 
 local cls_map = {}
-for k,v in pairs(build.type) do
-    cls_map[k] = {}
-    for kk,vv in pairs(v) do
-        if type(vv) == "table" and vv.name then
-            if vv.array == true and vv.map_keyfield and vv.map_valuefield then
-                cls_map[k][vv.name] = {
-                    type = "map",
-                    key = vv.map_keyfield.typename,
-                    value = vv.map_valuefield.typename,
-                }
-            elseif vv.array == true then
-                cls_map[k][vv.name] = {
-                    type = "array",
-                    item = vv.typename,
-                }
-            else
-                cls_map[k][vv.name] = {
-                    type = vv.typename,
-                }
+local protocols = {}
+for k, v in pairs(build.protocol) do
+    protocols[v.request] = true
+    protocols[v.response] = true
+end
+for k, v in pairs(build.type) do
+    -- 排除协议
+    if not protocols[k] then
+        cls_map[k] = {}
+        for kk, vv in pairs(v) do
+            if type(vv) == "table" and vv.name then
+                if vv.array == true and vv.map_keyfield and vv.map_valuefield then
+                    cls_map[k][vv.name] = {
+                        type = "map",
+                        key = vv.map_keyfield.typename,
+                        value = vv.map_valuefield.typename,
+                    }
+                elseif vv.array == true then
+                    cls_map[k][vv.name] = {
+                        type = "array",
+                        item = vv.typename,
+                    }
+                else
+                    cls_map[k][vv.name] = {
+                        type = vv.typename,
+                    }
+                end
             end
         end
     end
 end
-
-
 
 -- 打开文件
 local outfile = io.open(outfilename, "w")
@@ -105,14 +111,16 @@ if not outfile then
     return
 end
 
-
-local fmt_file_header = sformat([[
+local fmt_file_header = sformat(
+    [[
 -- Code generated from %s
 -- DO NOT EDIT!
-return ]], str_sproto_files)
+return ]],
+    str_sproto_files
+)
 
-local s = sprotodump_serpent.block(cls_map, {comment=false})
-local out_content = table.concat({fmt_file_header, s}, '')
+local s = sprotodump_serpent.block(cls_map, { comment = false })
+local out_content = table.concat({ fmt_file_header, s }, "")
 
 -- 写入文件内容
 local content = outfile:write(out_content)
