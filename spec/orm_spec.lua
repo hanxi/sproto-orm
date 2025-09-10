@@ -11,10 +11,50 @@ describe("ORM", function()
         it("空值初始化", function()
             local addressBook = schema.AddressBook.new()
             local is_dirty, ret = orm.commit_mongo(addressBook)
-            print("空值初始化结果", is_dirty, seri(ret))
+            print("空值初始化结果", is_dirty, seri(ret), seri(addressBook))
+            assert.equals(false, is_dirty)
+            assert.are.same(ret, {})
         end)
 
-        it("should fail with invalid types", function()
+        it("有值初始化", function()
+            local originAddressBook = {
+                person = {
+                    [1] = {
+                        name = "hanxi",
+                        id = 1,
+                    }
+                }
+            }
+            local addressBook = schema.AddressBook.new(originAddressBook)
+            assert.equals(addressBook, originAddressBook)
+            local is_dirty, ret = orm.commit_mongo(addressBook)
+            print("有值初始化结果", is_dirty, seri(ret), seri(addressBook))
+            assert.equals(false, is_dirty)
+            assert.are.same(ret, {})
+            assert.are.same(originAddressBook, addressBook)
+        end)
+
+        it("修改数据", function()
+            local originAddressBook = {
+                person = {
+                    [1] = {
+                        name = "hanxi",
+                        id = 1,
+                    }
+                }
+            }
+            local addressBook = schema.AddressBook.new(originAddressBook)
+            addressBook.person[1].name = "hanxinew"
+            local is_dirty, ret = orm.commit_mongo(addressBook)
+            local need_ret = {
+                ["$set"] = {
+                    -- TODO: 数组
+                    ["person.1.name"] = "hanxinew"
+                }
+            }
+            assert.are.same(ret, need_ret)
+            print("修改数据", is_dirty, seri(ret), seri(addressBook))
+
             assert.has_error(function()
                 schema.PhoneNumber.new({
                     number = 123,  -- should be string

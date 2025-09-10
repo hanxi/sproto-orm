@@ -183,10 +183,28 @@ _new_doc = function(schema, init)
     return doc
 end
 
+local function _clear_dirty(doc, watched)
+    -- TODO: 在哪个地方检查有环比较合适
+    -- 防止有环
+    watched = watched or {}
+    if watched[doc] then
+        return
+    end
+    watched[doc] = true
+    doc._dirty = false
+    doc._all_dirty = false
+    doc._changed_keys = {}
+    doc._changed_values = {}
+    for _,v in pairs(doc) do
+        if getmetatable(v) == ormdoc_type then
+            _clear_dirty(v)
+        end
+    end
+end
+
 function orm.new(schema, init)
     local doc = _new_doc(schema, init)
-    -- TODO: 另外实现一个函数或者修改 _new_doc 的实现
-    orm.commit_mongo(doc)
+    _clear_dirty(doc)
     return doc
 end
 
