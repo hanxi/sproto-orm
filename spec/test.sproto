@@ -1,11 +1,11 @@
 .PhoneNumber {
     number 99 : string
-    type  1000: integer
+    type 1000 : integer
 }
 
 .IntKeyStringValue {
-    key 0: integer
-    value 1: string
+    key 0 : integer
+    value 1 : string
 }
 
 .Person {
@@ -25,13 +25,14 @@
 	person 0: *Person(id)
 }
 
+# rpc 不会导出 schema
 login 101 {
     request {
         token 0: string # jwt token {account,ts,sign}
     }
     response {
-        code     0: integer
-        account  1: string
+        code 0: integer
+        account 1: string
         gamenode 2: string # 需要连的游戏节点
     }
 }

@@ -59,7 +59,9 @@ local function mark_dirty(doc)
 end
 
 local function doc_change_value(doc, k, v)
-    if v ~= nil then
+    if getmetatable(v) == ormdoc_type then
+        doc._schema:_check_kv(k, v._schema)
+    elseif v ~= nil then
         doc._schema:_check_kv(k, v)
     end
     if v ~= doc[k] then
@@ -72,80 +74,24 @@ end
 
 local _new_doc = nil
 local function doc_change_recursively(doc, k, v)
+    local schema = doc._schema[k]
     local lv = doc._stage[k]
-    if getmetatable(lv) ~= ormdoc_type then
-        lv = doc._changed_values[k]
-        if v._schema then
-            doc._schema:_check_kv(k, v._schema)
-        end
-        local schema = doc._schema[k]
-        if getmetatable(lv) ~= ormdoc_type then
-            -- last version is not a table, new a empty one
-            lv = _new_doc(schema, nil)
-        else
-            -- this version is clear first (not a ORM), deepcopy lastversion one
-            lv = _new_doc(schema, lv)
-        end
+    if getmetatable(v) == ormdoc_type then
+        lv = v
+    else
+        lv = _new_doc(schema, v)
+    end
 
-        lv._parent = doc
-        doc._stage[k] = lv
-    end
-    local keys = {}
-    for kk, _ in pairs(lv) do
-        keys[kk] = true
-    end
-    -- deepcopy v
-    for kk, vv in pairs(v) do
-        lv[kk] = vv
-        keys[kk] = nil
-    end
-    -- clear keys not exist in v
-    for kk in pairs(keys) do
-        lv[kk] = nil
-    end
-    -- don't cache sub table into changed fields
-    doc._changed_values[k] = nil
-    doc._changed_keys[k] = nil
+    lv._parent = doc
+    doc_change_value(doc, k, lv)
     lv._all_dirty = true
 end
 
-local function doc_set_const(doc)
-    if doc._const then
-        return
-    end
-
-    doc._const = true
-    for k, v in pairs(doc) do
-        if type(v) == "table" then
-            doc_set_const(v)
-        end
-    end
-end
-
 local function doc_change(doc, k, v)
-    if doc._const then
-        error(sformat("const can't change. k:%s, v:%s", k, v))
-    end
-
     -- parse k
     k = doc._schema:_parse_k(k)
 
-    local recursively = false
     if type(v) == "table" then
-        local vt = getmetatable(v)
-        recursively = (vt == nil) or (vt == ormdoc_type)
-
-        if v ~= nil and v._schema then
-            doc._schema:_check_kv(k, v._schema)
-        end
-
-        if doc._schema and vt ~= nil then
-            -- deep set v to const
-            -- doc_set_const(v)
-        end
-    end
-
-    if recursively then
         doc_change_recursively(doc, k, v)
     elseif doc[k] ~= v then
         doc_change_value(doc, k, v)
@@ -203,17 +149,21 @@ _new_doc = function(schema, init)
             return rawget(t, k)
         end,
     })
+    local init_copy = {}
+    for k, v in pairs(init or {}) do
+        init_copy[k] = v
+        init[k] = nil
+    end
 
-    local doc = {
-        _dirty = false,
-        _all_dirty = false,
-        _parent = false,
-        _changed_keys = {},
-        _changed_values = {},
-        _stage = doc_stage,
-        _schema = schema,
-        _const = false,
-    }
+    -- use init addr
+    local doc = init or {}
+    doc._dirty = false
+    doc._all_dirty = false
+    doc._parent = false
+    doc._changed_keys = {}
+    doc._changed_values = {}
+    doc._stage = doc_stage
+    doc._schema = schema
     setmetatable(doc, {
         __index = doc_stage,
         __newindex = doc_change,
@@ -222,14 +172,12 @@ _new_doc = function(schema, init)
         __len = doc_len,
         __metatable = ormdoc_type, -- avoid copy by ref
     })
-    if init then
-        for k, v in pairs(init) do
-            -- deepcopy v
-            if getmetatable(v) == ormdoc_type then
-                doc[k] = _new_doc(schema[k], v)
-            else
-                doc[k] = v
-            end
+
+    for k, v in pairs(init_copy) do
+        if getmetatable(v) ~= ormdoc_type and type(v) == "table" then
+            doc[k] = _new_doc(schema[k], v)
+        else
+            doc[k] = v
         end
     end
     return doc
@@ -292,7 +240,6 @@ local function _commit_mongo(doc, result, prefix)
                 if v == nil then
                     result["$unset"][key] = ""
                 else
-                    print("fuck1", key, k)
                     result["$set"][key] = v
                 end
                 result._n = result._n + 1
@@ -322,7 +269,7 @@ local function _commit_mongo(doc, result, prefix)
                     if result["$set"][key] == nil and v._all_dirty then
                         -- TODO: 序列化bson时，v如果是map，需要把key转为string
                         -- 序列化前修改 pairs, 序列化后还原 pairs
-                        print("fuck", key, v._schema)
+                        -- print("fuck", key, v._schema)
                         result["$set"][key] = v
                         result._n = result._n + 1
                     end
