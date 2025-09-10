@@ -35,3 +35,23 @@ local dirty, ret = orm.commit_mongo(address_book)
 print(dirty, seri(ret))
 
 print(seri(address_book))
+
+local phone2 = schema.PhoneNumber.new({
+    number = "2",
+    type = 2,
+})
+address_book.person[id].phone[2] = phone2
+phone2.number = "22"
+
+local dirty, ret = orm.commit_mongo(address_book)
+print(dirty, seri(ret))
+
+local phone3 = {
+    number = "3",
+    type = 3,
+}
+address_book.person[id].phone[3] = phone3
+phone3.number = "33"
+
+local dirty, ret = orm.commit_mongo(address_book)
+print(dirty, seri(ret))

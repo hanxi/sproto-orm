@@ -91,17 +91,17 @@ local function doc_change_recursively(doc, k, v)
         doc._stage[k] = lv
     end
     local keys = {}
-    for k in pairs(lv) do
-        keys[k] = true
+    for kk, _ in pairs(lv) do
+        keys[kk] = true
     end
     -- deepcopy v
-    for k, v in pairs(v) do
-        lv[k] = v
-        keys[k] = nil
+    for kk, vv in pairs(v) do
+        lv[kk] = vv
+        keys[kk] = nil
     end
     -- clear keys not exist in v
-    for k in pairs(keys) do
-        lv[k] = nil
+    for kk in pairs(keys) do
+        lv[kk] = nil
     end
     -- don't cache sub table into changed fields
     doc._changed_values[k] = nil
@@ -133,7 +133,7 @@ local function doc_change(doc, k, v)
     local recursively = false
     if type(v) == "table" then
         local vt = getmetatable(v)
-        recursively = vt == nil or vt == ormdoc_type
+        recursively = (vt == nil) or (vt == ormdoc_type)
 
         if v ~= nil and v._schema then
             doc._schema:_check_kv(k, v._schema)
@@ -141,7 +141,7 @@ local function doc_change(doc, k, v)
 
         if doc._schema and vt ~= nil then
             -- deep set v to const
-            doc_set_const(v)
+            -- doc_set_const(v)
         end
     end
 
@@ -194,7 +194,7 @@ orm.remove = doc_remove
 _new_doc = function(schema, init)
     local doc_stage = {}
     if schema == nil then
-        error("need_schema")
+        error("need schema")
     end
 
     setmetatable(doc_stage, {
@@ -237,6 +237,7 @@ end
 
 function orm.new(schema, init)
     local doc = _new_doc(schema, init)
+    -- TODO: 另外实现一个函数或者修改 _new_doc 的实现
     orm.commit_mongo(doc)
     return doc
 end
@@ -343,7 +344,7 @@ function orm.commit_mongo(doc)
         ["$unset"] = {},
         _n = 0,
     }
-    local dirty = _commit_mongo(doc, result)
+    local is_dirty = _commit_mongo(doc, result)
     result._n = nil
     if next(result["$set"]) == nil then
         result["$set"] = nil
@@ -351,12 +352,11 @@ function orm.commit_mongo(doc)
     if next(result["$unset"]) == nil then
         result["$unset"] = nil
     end
-    return dirty, result
+    return is_dirty, result
 end
 
 function orm.is_dirty(doc)
-    -- TODO:
-    return true
+    return dock._dirty
 end
 
 return orm
