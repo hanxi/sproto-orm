@@ -12,7 +12,6 @@
 	name 0 : string
 	id 1 : integer
 
-
 	phone 4 : *PhoneNumber
 	phonemap 5 : *PhoneNumber()
     phonemapkv 6 : *PhoneNumber(number)

@@ -11,7 +11,7 @@ describe("ORM", function()
         it("空值初始化", function()
             local addressBook = schema.AddressBook.new()
             local is_dirty, ret = orm.commit_mongo(addressBook)
-            print("空值初始化结果", is_dirty, seri(ret), seri(addressBook))
+            -- print("空值初始化结果", is_dirty, seri(ret), seri(addressBook))
             assert.equals(false, is_dirty)
             assert.are.same(ret, {})
         end)
@@ -28,7 +28,7 @@ describe("ORM", function()
             local addressBook = schema.AddressBook.new(originAddressBook)
             assert.equals(addressBook, originAddressBook)
             local is_dirty, ret = orm.commit_mongo(addressBook)
-            print("有值初始化结果", is_dirty, seri(ret), seri(addressBook))
+            -- print("有值初始化结果", is_dirty, seri(ret), seri(addressBook))
             assert.equals(false, is_dirty)
             assert.are.same(ret, {})
             assert.are.same(originAddressBook, addressBook)
@@ -52,16 +52,16 @@ describe("ORM", function()
                 },
             }
             assert.are.same(ret, need_ret)
-            print("修改数据", is_dirty, seri(ret), seri(addressBook))
+            -- print("修改数据", is_dirty, seri(ret), seri(addressBook))
 
             local one_person = addressBook.person[1]
-            print("错误读取数据")
+            -- print("错误读取数据")
             assert.has_error(function()
                 -- 不存在的 key
                 local age = one_person.age
             end, "not exist key: age")
 
-            print("错误修改数据")
+            -- print("错误修改数据")
             assert.has_error(function()
                 -- 类型错误
                 one_person.name = 1
@@ -78,7 +78,7 @@ describe("ORM", function()
             local is_dirty, ret = orm.commit_mongo(addressBook)
             assert.equals(false, is_dirty)
             assert.are.same(ret, {})
-            print("检查数据", is_dirty, seri(ret), seri(addressBook))
+            -- print("检查数据", is_dirty, seri(ret), seri(addressBook))
         end)
     end)
 
@@ -96,8 +96,6 @@ describe("ORM", function()
                     },
                 },
             })
-            -- 初始化提交，确保干净
-            local _, _ = orm.commit_mongo(address_book)
         end)
 
         it("整体修改 phone2", function()
@@ -108,7 +106,7 @@ describe("ORM", function()
             address_book.person[id].phone[2] = phone2
             local is_dirty, ret = orm.commit_mongo(address_book)
 
-            print("整体修改 phone2", seri(ret), seri(address_book))
+            -- print("整体修改 phone2", seri(ret), seri(address_book))
             assert.is_true(is_dirty)
             local expected = {
                 ["$set"] = {
@@ -131,7 +129,7 @@ describe("ORM", function()
 
             phone2.number = "22"
             local is_dirty, ret = orm.commit_mongo(address_book)
-            print("局部修改 phone2", is_dirty, seri(ret), seri(address_book))
+            -- print("局部修改 phone2", is_dirty, seri(ret), seri(address_book))
 
             assert.is_true(is_dirty)
             assert.equals("22", ret["$set"]["person.1.phone.1.number"])
@@ -194,9 +192,212 @@ describe("ORM", function()
 
             phone3.number = "33"
             local is_dirty, ret = orm.commit_mongo(address_book)
-
             assert.is_true(is_dirty)
             assert.equals("33", ret["$set"]["person.1.phone.1.number"])
+        end)
+
+        it("map元素操作", function()
+            -- print(seri(address_book))
+            local person2 = orm.clone(address_book.person[1])
+            person2.id = 2
+            person2.name = "hanxi2"
+            address_book.person[1] = nil
+            address_book.person[2] = person2
+            person2.phone = nil
+
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_true(is_dirty)
+            local expected = {
+                ["$set"] = {
+                    ["person.2"] = {
+                        id = 2,
+                        name = "hanxi2",
+                    },
+                },
+                ["$unset"] = {
+                    ["person.1"] = "",
+                },
+            }
+            -- print(seri(ret), seri(address_book))
+            assert.equals(seri(expected), seri(ret))
+
+            address_book.person[2] = nil
+            local new_person = orm.clone(person2)
+            address_book.person[3] = new_person
+            new_person.id = 3
+            new_person.name = "hanxi3"
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_true(is_dirty)
+            local expected = {
+                ["$set"] = {
+                    ["person.3"] = {
+                        id = 3,
+                        name = "hanxi3",
+                    },
+                },
+                ["$unset"] = {
+                    ["person.2"] = "",
+                },
+            }
+            -- print(seri(ret), seri(address_book))
+            assert.equals(seri(expected), seri(ret))
+        end)
+
+        it("数组元素操作", function()
+            local phone = {
+                number = "123",
+                type = 123,
+            }
+            address_book.person[id].phone[1] = phone
+            address_book.person[id].phone[2] = orm.clone(phone)
+            address_book.person[id].phone[3] = orm.clone(phone)
+            address_book.person[id].phone[4] = orm.clone(phone)
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_true(is_dirty)
+            -- print(seri(ret), seri(address_book))
+            assert.equals(seri(phone), seri(ret["$set"]["person.1.phone.0"]))
+            assert.equals(seri(phone), seri(ret["$set"]["person.1.phone.1"]))
+            assert.equals(seri(phone), seri(ret["$set"]["person.1.phone.2"]))
+            assert.equals(seri(phone), seri(ret["$set"]["person.1.phone.3"]))
+
+            -- 数组元素设置为空
+            address_book.person[id].phone[1] = nil
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_true(is_dirty)
+            -- print(seri(ret), seri(address_book))
+            local expected = {
+                ["$unset"] = {
+                    ["person.1.phone.0"] = "",
+                },
+            }
+            assert.equals(seri(expected), seri(ret))
+
+            -- 删除数组元素
+            -- print(seri(address_book))
+            orm.remove(address_book.person[id].phone, 1)
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_true(is_dirty)
+            -- print(seri(ret), seri(address_book))
+            local expected = {
+                ["$set"] = {
+                    ["person.1.phone.0"] = {
+                        number = "123",
+                        type = 123,
+                    },
+                    ["person.1.phone.1"] = {
+                        number = "123",
+                        type = 123,
+                    },
+                    ["person.1.phone.2"] = {
+                        number = "123",
+                        type = 123,
+                    },
+                },
+                ["$unset"] = {
+                    ["person.1.phone.3"] = "",
+                },
+            }
+            assert.equals(seri(expected), seri(ret))
+
+            -- phone 已经有 parent 了，不能再放进去
+            local new_phone = orm.clone(phone)
+            new_phone.number = "new"
+            orm.insert(address_book.person[id].phone, 1, new_phone)
+            local new_new_phone = orm.clone(phone)
+            new_new_phone.number = "new new"
+            orm.insert(address_book.person[id].phone, 3, new_new_phone)
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_true(is_dirty)
+            -- print(seri(ret), seri(address_book))
+            local expected = {
+                ["$set"] = {
+                    ["person.1.phone.0"] = {
+                        number = "new",
+                        type = 123,
+                    },
+                    ["person.1.phone.1"] = {
+                        number = "123",
+                        type = 123,
+                    },
+                    ["person.1.phone.2"] = {
+                        number = "new new",
+                        type = 123,
+                    },
+                    ["person.1.phone.3"] = {
+                        number = "123",
+                        type = 123,
+                    },
+                    ["person.1.phone.4"] = {
+                        number = "123",
+                        type = 123,
+                    },
+                },
+            }
+            assert.equals(seri(expected), seri(ret))
+        end)
+    end)
+
+    describe("多引用", function()
+        it("多引用初始化", function()
+            local id = 1
+            local originAddressBook = {
+                person = {
+                    [id] = {
+                        id = id,
+                        name = "hanxi",
+                        phone = {},
+                    },
+                },
+            }
+            originAddressBook.person[2] = originAddressBook.person[1]
+            -- print("多引用初始化前", seri(originAddressBook))
+            assert.equals(originAddressBook.person[2], originAddressBook.person[1])
+
+            local address_book = schema.AddressBook.new(originAddressBook)
+            -- print("多引用初始化", seri(address_book))
+            assert.not_equals(address_book.person[2], address_book.person[1])
+            -- 子表也会深拷贝
+            assert.not_equals(address_book.person[2].phone, address_book.person[1].phone)
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            assert.is_false(is_dirty)
+            assert.are.same(ret, {})
+        end)
+    end)
+
+    describe("parent修改", function()
+        local id = 1
+        local address_book
+
+        before_each(function()
+            address_book = schema.AddressBook.new({
+                person = {
+                    [id] = {
+                        id = id,
+                        name = "hanxi",
+                        phone = {},
+                    },
+                },
+            })
+        end)
+
+        it("把一个元素赋值到另一个元素", function()
+            local phone1 = {
+                number = "1",
+                type = 1,
+            }
+            address_book.person[id].phone[1] = phone1
+            assert.has_error(function()
+                address_book.person[id].phone[2] = phone1
+            end, "non-root nodes cannot be assigned to other objects")
+            address_book.person[id].phone[2] = orm.clone(phone1)
+            assert.equals(address_book.person[id].phone[1], phone1)
+            assert.not_equals(address_book.person[id].phone[2], phone1)
+            -- print("把一个元素赋值到另一个元素", seri(address_book))
+            local is_dirty, changes = orm.commit_mongo(address_book)
+            -- print(seri(changes))
+            assert.is_true(is_dirty)
+            assert.equals(seri(phone1), seri(changes["$set"]["person.1.phone.1"]))
+            assert.equals(seri(phone1), seri(changes["$set"]["person.1.phone.0"]))
         end)
     end)
 
