@@ -7,18 +7,13 @@ local table = table
 local sformat = string.format
 
 local orm = {}
-local NULL = setmetatable({}, {
-    __tostring = function()
-        return "NULL"
-    end,
-}) -- nil
-orm.null = NULL
+local _new_doc = nil
+
 local ormdoc_type = setmetatable({}, {
     __tostring = function()
         return "ORM"
     end,
 })
-local tracedoc_len = setmetatable({}, { __mode = "kv" })
 
 local function doc_len(doc)
     return #doc.__stage
@@ -72,7 +67,6 @@ local function doc_change_value(doc, k, v)
     end
 end
 
-local _new_doc = nil
 local function doc_change_recursively(doc, k, v)
     local schema = doc.__schema[k]
     local lv = doc.__stage[k]
@@ -99,7 +93,8 @@ local function doc_change(doc, k, v)
     end
 end
 
-local function deepcopy(object)
+-- 转为普通表
+local function doc_totable(object)
     local lookup_table = {}
     local function _copy(obj)
         if type(obj) ~= "table" then
@@ -121,7 +116,7 @@ end
 
 local function _clone_doc(doc)
     assert(getmetatable(doc) == ormdoc_type, "only suppor orm")
-    local init = deepcopy(doc)
+    local init = doc_totable(doc)
     return _new_doc(doc.__schema, init)
 end
 
@@ -157,6 +152,53 @@ local function doc_remove(doc, index)
     return v
 end
 
+local function default_pairs(t)
+    return doc_pairs(t)
+end
+
+local function bson_next(doc, k)
+    if k ~= nil then
+        k = doc.__schema:_parse_k(k)
+    end
+
+    local k1, v1 = next(doc.__stage, k)
+    if k1 == nil then
+        return k1, v1
+    end
+
+    if type(k1) ~= "string" then
+        k1 = tostring(k1)
+    end
+    return k1, v1
+end
+
+local function bson_pairs(t)
+    return bson_next, t, nil
+end
+
+local table_pairs = default_pairs
+
+local function start_serialize()
+    assert(table_pairs == default_pairs)
+    table_pairs = bson_pairs
+end
+
+local function stop_serialize()
+    assert(table_pairs == bson_pairs)
+    table_pairs = default_pairs
+end
+
+-- 处理序列化 map 时把 key 改为 string 类型
+function orm.with_bson_encode_context(f, ...)
+    start_serialize()
+    local ok, ret = pcall(f, ...)
+    stop_serialize()
+    if not ok then
+        error(ret)
+    end
+    return ret
+end
+
 _new_doc = function(schema, init)
     assert(schema, "need schema")
     assert(getmetatable(init) ~= ormdoc_type, "can not orm")
@@ -186,7 +228,10 @@ _new_doc = function(schema, init)
     setmetatable(doc, {
         __index = doc_stage,
         __newindex = doc_change,
-        __pairs = doc_pairs,
+        __pairs = function(t)
+            -- 正常使用时是 default_pairs , 序列化 bson 时是 bson_pairs
+            return table_pairs(t)
+        end,
         __ipairs = doc_ipairs,
         __len = doc_len,
         __metatable = ormdoc_type, -- avoid copy by ref
@@ -267,28 +312,34 @@ local function unset_all_dirty(tab, visited)
     end
 end
 
-local function _commit_mongo(doc, result, prefix)
+local function _commit_mongo(doc, result, path_array, depth)
     doc.__dirty = false
     local changed_keys = doc.__changed_keys
     local changed_values = doc.__changed_values
     local stage = doc.__stage
     local dirty = false
+
+    path_array = path_array or {}
+    depth = depth or 1
+
     if next(changed_keys) ~= nil then
         dirty = true
         for k in next, changed_keys do
-            local v, lv = stage[k], changed_values[k]
+            local v = stage[k]
             changed_keys[k] = nil
             changed_values[k] = nil
             if result then
-                -- TODO: 优化 prefix，改为 path 数组
-                local key
                 if doc.__schema.type == "array" then
-                    key = prefix and (prefix .. (k - 1)) or tostring(k - 1)
+                    path_array[depth] = k - 1
                 else
-                    key = prefix and (prefix .. k) or tostring(k)
+                    path_array[depth] = k
                 end
+
+                local key = table.concat(path_array, ".", 1, depth)
+                path_array[depth] = nil
+
                 if v == nil then
-                    result["$unset"][key] = ""
+                    result["$unset"][key] = true
                 else
                     result["$set"][key] = v
                 end
@@ -296,40 +347,44 @@ local function _commit_mongo(doc, result, prefix)
             end
         end
     end
+
     for k, v in pairs(stage) do
         if getmetatable(v) == ormdoc_type and v.__dirty then
+            if doc.__schema.type == "array" then
+                path_array[depth] = k - 1
+            else
+                path_array[depth] = k
+            end
+
             if result then
-                local key
-                if doc.__schema.type == "array" then
-                    key = prefix and (prefix .. (k - 1)) or tostring(k - 1)
-                else
-                    key = prefix and (prefix .. k) or tostring(k)
-                end
                 local change
                 if v.__all_dirty then
-                    change = _commit_mongo(v)
+                    change = _commit_mongo(v, nil, path_array, depth + 1)
                 else
                     local n = result._n
-                    _commit_mongo(v, result, key .. ".")
+                    _commit_mongo(v, result, path_array, depth + 1)
                     if n ~= result._n then
                         change = true
                     end
                 end
+
                 if change then
-                    if result["$set"][key] == nil and v.__all_dirty then
-                        -- TODO: 序列化bson时，v如果是map，需要把key转为string
-                        -- 序列化前修改 pairs, 序列化后还原 pairs
-                        -- print("fuck", key, v.__schema)
-                        result["$set"][key] = v
-                        result._n = result._n + 1
+                    if v.__all_dirty then
+                        local key = table.concat(path_array, ".", 1, depth)
+                        if result["$set"][key] == nil then
+                            result["$set"][key] = v
+                            result._n = result._n + 1
+                        end
                     end
                     dirty = true
                 end
                 unset_all_dirty(v)
             else
-                local change = _commit_mongo(v)
+                local change = _commit_mongo(v, nil, path_array, depth + 1)
                 dirty = dirty or change
             end
+
+            path_array[depth] = nil -- 统一在循环末尾清理路径
         end
     end
     return dirty
@@ -365,5 +420,6 @@ orm.unpack = doc_unpack
 orm.concat = doc_concat
 orm.insert = doc_insert
 orm.remove = doc_remove
+orm.totable = doc_totable
 
 return orm

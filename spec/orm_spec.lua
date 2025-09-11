@@ -34,6 +34,48 @@ describe("ORM", function()
             assert.are.same(originAddressBook, addressBook)
         end)
 
+        it("map初始化", function()
+            -- map 的 key 在数据库中是 string
+            local id = "1"
+            local originAddressBook = {
+                person = {
+                    [id] = {
+                        name = "hanxi",
+                        id = 1,
+                    },
+                },
+            }
+            local addressBook = schema.AddressBook.new(originAddressBook)
+            assert.equals(addressBook, originAddressBook)
+            local is_dirty, ret = orm.commit_mongo(addressBook)
+            -- print("map初始化结果", is_dirty, seri(ret), seri(addressBook))
+            assert.equals(false, is_dirty)
+            assert.are.same(ret, {})
+            assert.are.same(originAddressBook, addressBook)
+        end)
+
+        it("bson序列化", function()
+            local id = "1"
+            local originAddressBook = {
+                person = {
+                    [id] = {
+                        name = "hanxi",
+                        id = 1,
+                    },
+                },
+            }
+            local addressBook = schema.AddressBook.new(originAddressBook)
+            local ret = orm.with_bson_encode_context(orm.totable, addressBook)
+            local ret1 = seri(ret)
+            local ret2 = seri(addressBook)
+            -- print(ret1, ret2)
+            local expected = {
+                id = 1,
+                name = "hanxi",
+            }
+            assert.equals(seri(expected), seri(ret.person[id]))
+        end)
+
         it("读取和修改数据", function()
             local originAddressBook = {
                 person = {
@@ -215,7 +257,7 @@ describe("ORM", function()
                     },
                 },
                 ["$unset"] = {
-                    ["person.1"] = "",
+                    ["person.1"] = true,
                 },
             }
             -- print(seri(ret), seri(address_book))
@@ -236,7 +278,7 @@ describe("ORM", function()
                     },
                 },
                 ["$unset"] = {
-                    ["person.2"] = "",
+                    ["person.2"] = true,
                 },
             }
             -- print(seri(ret), seri(address_book))
@@ -267,7 +309,7 @@ describe("ORM", function()
             -- print(seri(ret), seri(address_book))
             local expected = {
                 ["$unset"] = {
-                    ["person.1.phone.0"] = "",
+                    ["person.1.phone.0"] = true,
                 },
             }
             assert.equals(seri(expected), seri(ret))
@@ -294,7 +336,7 @@ describe("ORM", function()
                     },
                 },
                 ["$unset"] = {
-                    ["person.1.phone.3"] = "",
+                    ["person.1.phone.3"] = true,
                 },
             }
             assert.equals(seri(expected), seri(ret))
