@@ -415,6 +415,10 @@ function orm.clone(doc)
     return _clone_doc(doc)
 end
 
+function orm.is_orm(doc)
+    return getmetatable(doc) == ormdoc_type
+end
+
 orm.next = doc_next
 orm.unpack = doc_unpack
 orm.concat = doc_concat
