@@ -65,7 +65,7 @@ describe("ORM", function()
                 },
             }
             local addressBook = schema.AddressBook.new(originAddressBook)
-            -- 使用 orm.totable 模拟 bson_encode 接口，会把 map 中的整数转为字符串
+            -- 使用 orm.totable 模拟 bson_encode 接口，会把 map 中的整数 key 转为字符串
             local ret = orm.with_bson_encode_context(orm.totable, addressBook)
             local ret1 = seri(ret)
             local ret2 = seri(addressBook)
