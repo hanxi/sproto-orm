@@ -217,6 +217,10 @@ ${name}._check_kv = check_kv
 ${name}.new = function(init)
     return orm.new(${name}, init)
 end
+local ${name}_fields = {${fields_list_str}}
+${name}.fields = function()
+    return ${name}_fields
+end
 ]]
 
 local tmpl_map = [[
@@ -268,15 +272,22 @@ end
 local returns = {}
 tinsert(returns, "return {")
 
+local forbiden_fields = {
+    ["new"] = true,
+    ["fields"] = true,
+}
 local bodys = {}
 local maps = {}
 local arrs = {}
+local obj_names = {}
 for name, fields in sort_pairs(schema_define) do
     tinsert(defines, sformat('local %s = { type = "struct" }', name))
     tinsert(returns, sformat("    %s = %s,", name, name))
 
     local fields_line = {}
+    local fields_list = {}
     for field_name, field in sort_pairs(fields) do
+        assert(forbiden_fields[field_name] == nil, sformat("forbiden fields <%s.%s>", name, field_name))
         local tp_name = field.type
         if tp_name == "map" then
             local key_type = typename(field.key)
@@ -284,6 +295,9 @@ for name, fields in sort_pairs(schema_define) do
             local kv_type = sformat("%s_%s", key_type, value_type)
             if not maps[kv_type] then
                 maps[kv_type] = true
+                local obj_name = sformat("map_%s", kv_type)
+                assert(obj_names[obj_name] == nil, sformat("obj name duplicate <%s>", obj_name))
+                obj_names[obj_name] = true
                 tinsert(bodys, interp(tmpl_map, { key_type = key_type, value_type = value_type, kv_type = kv_type }))
                 tinsert(defines, sformat('local map_%s = { type = "map"}', kv_type))
                 tinsert(returns, sformat("    map_%s = map_%s,", kv_type, kv_type))
@@ -291,6 +305,9 @@ for name, fields in sort_pairs(schema_define) do
         elseif tp_name == "array" then
             local field_type = typename(field.item)
             arrs[field_type] = true
+            local obj_name = sformat("arr_%s", field_type)
+            assert(obj_names[obj_name] == nil, sformat("obj name duplicate <%s>", obj_name))
+            obj_names[obj_name] = true
             tinsert(bodys, interp(tmpl_arr, { value_type = field_type }))
             tinsert(defines, sformat('local arr_%s = { type = "array" }', field_type))
             tinsert(returns, sformat("    arr_%s = arr_%s,", field_type, field_type))
@@ -303,9 +320,14 @@ for name, fields in sort_pairs(schema_define) do
             field_type = sformat("arr_%s", typename(field.item))
         end
         tinsert(fields_line, sformat("%s.%s = %s", name, field_name, field_type))
+        tinsert(fields_list, sformat("%q", field_name))
     end
     local fields_str = tconcat(fields_line, "\n")
-    tinsert(bodys, interp(tmpl_message, { name = name, fields_str = fields_str }))
+    local fields_list_str = tconcat(fields_list, ",")
+    local obj_name = name
+    assert(obj_names[obj_name] == nil, sformat("obj name duplicate <%s>", obj_name))
+    obj_names[obj_name] = true
+    tinsert(bodys, interp(tmpl_message, { name = name, fields_str = fields_str, fields_list_str = fields_list_str }))
 end
 
 tinsert(returns, "}")
