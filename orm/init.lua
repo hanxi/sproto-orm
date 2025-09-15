@@ -165,20 +165,24 @@ local function is_atom_type(v)
 end
 
 local bson_next
+local function is_skip_next(doc, v)
+    -- map no skip
+    if doc.__schema.type == "map" or is_atom_type(v) or (bson_next(v) ~= nil) then
+        return false
+    end
+    return true
+end
+
 local function skip_default_next(doc, k)
     local k1, v1 = next(doc.__stage, k)
     if k1 == nil then
         return k1, v1
     end
 
-    -- map, no skip
-    if doc.__schema.type == "map" then
+    if not is_skip_next(doc, v1) then
         return k1, v1
     end
 
-    if is_atom_type(v1) or (bson_next(v1) ~= nil) then
-        return k1, v1
-    end
     return skip_default_next(doc, k1)
 end
 
@@ -343,11 +347,13 @@ local function _commit_mongo(doc, result, path_array, depth)
     local changed_keys = doc.__changed_keys
     local changed_values = doc.__changed_values
     local stage = doc.__stage
+    local dirty = false
 
     path_array = path_array or {}
     depth = depth or 1
 
     if next(changed_keys) ~= nil then
+        dirty = true
         for k in next, changed_keys do
             local v = stage[k]
             changed_keys[k] = nil
@@ -365,7 +371,7 @@ local function _commit_mongo(doc, result, path_array, depth)
                 if v == nil then
                     result["$unset"][key] = true
                 else
-                    if is_atom_type(v) or (bson_next(v) ~= nil) then
+                    if not is_skip_next(doc, v) then
                         result["$set"][key] = v
                     end
                 end
@@ -398,22 +404,24 @@ local function _commit_mongo(doc, result, path_array, depth)
                     if v.__all_dirty then
                         local key = table.concat(path_array, ".", 1, depth)
                         if result["$set"][key] == nil then
-                            if is_atom_type(v) or (bson_next(v) ~= nil) then
+                            if not is_skip_next(doc, v) then
                                 result["$set"][key] = v
                                 result._n = result._n + 1
                             end
                         end
                     end
+                    dirty = true
                 end
                 unset_all_dirty(v)
             else
-                _commit_mongo(v, nil, path_array, depth + 1)
+                local change = _commit_mongo(v, nil, path_array, depth + 1)
+                dirty = dirty or change
             end
 
             path_array[depth] = nil -- 统一在循环末尾清理路径
         end
     end
-    return
+    return dirty
 end
 
 function orm.commit_mongo(doc)

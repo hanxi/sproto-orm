@@ -445,7 +445,7 @@ describe("ORM", function()
     end)
 
     describe("默认值", function()
-        it("空map", function()
+        it("空map1", function()
             local originAddressBook = {}
             -- print("空map", seri(originAddressBook))
             local address_book = schema.AddressBook.new(originAddressBook)
@@ -457,6 +457,36 @@ describe("ORM", function()
             -- print("空map落地", seri(ret))
             assert.is_false(is_dirty)
             assert.are.same(ret, {})
+        end)
+        it("空map2", function()
+            local originAddressBook = {}
+            local address_book = schema.AddressBook.new(originAddressBook)
+            address_book.person = {}
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            address_book.person[1] = {}
+            assert.equals(address_book.person[1].__parent, address_book.person)
+            assert.equals(address_book.person.__parent, address_book)
+            address_book.person[1].i2s = {
+                [1] = "a",
+            }
+            address_book.person[1].i2s[2] = "b"
+            -- local ret = orm.with_bson_encode_context(orm.totable, address_book)
+            -- print("空map序列化", seri(ret), getmetatable(address_book.person[1].i2s))
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            local expected = {
+                ["$set"] = {
+                    person = {
+                        {
+                            i2s = {
+                                "a",
+                                "b",
+                            },
+                        },
+                    },
+                },
+            }
+            -- print("空map落地", seri(ret))
+            assert.are.same(seri(expected), seri(ret))
         end)
         it("空struct", function()
             local person = {}
