@@ -446,14 +446,29 @@ describe("ORM", function()
 
     describe("默认值", function()
         it("空map", function()
-            local originAddressBook = {
-                person = {}
-            }
+            local originAddressBook = {}
             -- print("空map", seri(originAddressBook))
             local address_book = schema.AddressBook.new(originAddressBook)
             -- print("空map初始化", seri(address_book))
+            address_book.person = {}
+            local ret = orm.with_bson_encode_context(orm.totable, address_book)
+            -- print("空map序列化", seri(ret))
             local is_dirty, ret = orm.commit_mongo(address_book)
             -- print("空map落地", seri(ret))
+            assert.is_false(is_dirty)
+            assert.are.same(ret, {})
+        end)
+        it("空struct", function()
+            local person = {}
+            -- print("空struct", seri(person))
+            person = schema.Person.new(person)
+            -- print("空struct初始化", seri(person))
+            person.onephone = {}
+            local ret = orm.with_bson_encode_context(orm.totable, person)
+            -- print("空struct序列化", seri(ret))
+            local is_dirty, ret = orm.commit_mongo(person)
+            local ret = orm.with_bson_encode_context(orm.totable, ret)
+            -- print("空struct落地",is_dirty, seri(ret))
             assert.is_false(is_dirty)
             assert.are.same(ret, {})
         end)

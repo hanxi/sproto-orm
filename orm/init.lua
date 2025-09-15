@@ -343,13 +343,11 @@ local function _commit_mongo(doc, result, path_array, depth)
     local changed_keys = doc.__changed_keys
     local changed_values = doc.__changed_values
     local stage = doc.__stage
-    local dirty = false
 
     path_array = path_array or {}
     depth = depth or 1
 
     if next(changed_keys) ~= nil then
-        dirty = true
         for k in next, changed_keys do
             local v = stage[k]
             changed_keys[k] = nil
@@ -367,7 +365,9 @@ local function _commit_mongo(doc, result, path_array, depth)
                 if v == nil then
                     result["$unset"][key] = true
                 else
-                    result["$set"][key] = v
+                    if is_atom_type(v) or (bson_next(v) ~= nil) then
+                        result["$set"][key] = v
+                    end
                 end
                 result._n = result._n + 1
             end
@@ -398,22 +398,22 @@ local function _commit_mongo(doc, result, path_array, depth)
                     if v.__all_dirty then
                         local key = table.concat(path_array, ".", 1, depth)
                         if result["$set"][key] == nil then
-                            result["$set"][key] = v
-                            result._n = result._n + 1
+                            if is_atom_type(v) or (bson_next(v) ~= nil) then
+                                result["$set"][key] = v
+                                result._n = result._n + 1
+                            end
                         end
                     end
-                    dirty = true
                 end
                 unset_all_dirty(v)
             else
-                local change = _commit_mongo(v, nil, path_array, depth + 1)
-                dirty = dirty or change
+                _commit_mongo(v, nil, path_array, depth + 1)
             end
 
             path_array[depth] = nil -- 统一在循环末尾清理路径
         end
     end
-    return dirty
+    return
 end
 
 function orm.commit_mongo(doc)
@@ -422,13 +422,17 @@ function orm.commit_mongo(doc)
         ["$unset"] = {},
         _n = 0,
     }
-    local is_dirty = _commit_mongo(doc, result)
+    _commit_mongo(doc, result)
     result._n = nil
     if next(result["$set"]) == nil then
         result["$set"] = nil
     end
     if next(result["$unset"]) == nil then
         result["$unset"] = nil
+    end
+    local is_dirty = true
+    if next(result) == nil then
+        is_dirty = false
     end
     return is_dirty, result
 end
