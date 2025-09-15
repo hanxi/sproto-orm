@@ -156,12 +156,38 @@ local function default_pairs(t)
     return doc_pairs(t)
 end
 
-local function bson_next(doc, k)
+local function is_atom_type(v)
+    local tp = type(v)
+    if tp == "number" or tp == "string" or tp == "boolean" then
+        return true
+    end
+    return false
+end
+
+local bson_next
+local function skip_default_next(doc, k)
+    local k1, v1 = next(doc.__stage, k)
+    if k1 == nil then
+        return k1, v1
+    end
+
+    -- map, no skip
+    if doc.__schema.type == "map" then
+        return k1, v1
+    end
+
+    if is_atom_type(v1) or (bson_next(v1) ~= nil) then
+        return k1, v1
+    end
+    return skip_default_next(doc, k1)
+end
+
+bson_next = function(doc, k)
     if k ~= nil then
         k = doc.__schema:_parse_k(k)
     end
 
-    local k1, v1 = next(doc.__stage, k)
+    k1, v1 = skip_default_next(doc, k)
     if k1 == nil then
         return k1, v1
     end

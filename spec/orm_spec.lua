@@ -444,6 +444,21 @@ describe("ORM", function()
         end)
     end)
 
+    describe("默认值", function()
+        it("空map", function()
+            local originAddressBook = {
+                person = {}
+            }
+            -- print("空map", seri(originAddressBook))
+            local address_book = schema.AddressBook.new(originAddressBook)
+            -- print("空map初始化", seri(address_book))
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            -- print("空map落地", seri(ret))
+            assert.is_false(is_dirty)
+            assert.are.same(ret, {})
+        end)
+    end)
+
     -- AI 生成的测试用例
     describe("Person", function()
         it("should create valid Person with basic fields", function()
