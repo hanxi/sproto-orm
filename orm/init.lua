@@ -166,8 +166,7 @@ end
 
 local bson_next
 local function is_skip_next(doc, v)
-    -- map no skip
-    if doc.__schema.type == "map" or is_atom_type(v) or (bson_next(v) ~= nil) then
+    if is_atom_type(v) or (bson_next(v) ~= nil) then
         return false
     end
     return true
@@ -255,7 +254,8 @@ _new_doc = function(schema, init)
     doc.__changed_values = {}
     doc.__stage = doc_stage
     doc.__schema = schema
-    setmetatable(doc, {
+
+    local mt = {
         __index = doc_stage,
         __newindex = doc_change,
         __pairs = function(t)
@@ -263,7 +263,6 @@ _new_doc = function(schema, init)
             return table_pairs(t)
         end,
         __ipairs = doc_ipairs,
-        __len = doc_len,
         __metatable = ormdoc_type, -- avoid copy by ref
 
         -- 额外接口
@@ -272,7 +271,11 @@ _new_doc = function(schema, init)
         __concat = doc_concat,
         __insert = doc_insert,
         __remove = doc_remove,
-    })
+    }
+    if doc.__schema.type == "array" then
+        mt.__len = doc_len
+    end
+    setmetatable(doc, mt)
 
     for k, v in pairs(init_copy) do
         if type(v) == "table" then

@@ -470,8 +470,6 @@ describe("ORM", function()
                 [1] = "a",
             }
             address_book.person[1].i2s[2] = "b"
-            -- local ret = orm.with_bson_encode_context(orm.totable, address_book)
-            -- print("空map序列化", seri(ret), getmetatable(address_book.person[1].i2s))
             local is_dirty, ret = orm.commit_mongo(address_book)
             local expected = {
                 ["$set"] = {
@@ -487,6 +485,32 @@ describe("ORM", function()
             }
             -- print("空map落地", seri(ret))
             assert.are.same(seri(expected), seri(ret))
+            local ret = orm.with_bson_encode_context(orm.totable, address_book)
+            -- print("空map落地序列化", seri(ret))
+        end)
+        it("空map3", function()
+            local role_data = {
+                _version = 1,
+                rid = 1001,
+            }
+            role_data = schema.role.new(role_data)
+            role_data.modules = {}
+            role_data.modules.bag = {}
+            role_data.modules.mail = {}
+            role_data.modules.bag.bags = {
+                [101] = {
+                    res_type = 101,
+                    res = {
+                        [10086] = {
+                            res_size = 1,
+                        },
+                    },
+                },
+            }
+            local is_dirty, ret = orm.commit_mongo(role_data)
+            print(is_dirty, seri(ret))
+            local ret = orm.with_bson_encode_context(orm.totable, ret)
+            print("空map落地序列化", seri(ret))
         end)
         it("空struct", function()
             local person = {}

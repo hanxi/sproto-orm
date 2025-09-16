@@ -35,3 +35,69 @@ login 101 {
         gamenode 2: string # 需要连的游戏节点
     }
 }
+
+.role {
+    _version 0 : integer
+    rid 1 : integer
+    name 2 : string
+    account 3 : string
+    create_time 4 : integer
+    last_login_time 5 : integer
+    modules 6 : role_modules # 模块列表
+}
+
+.role_modules {
+    bag 0 : role_bag # 资源列表
+    mail 1 : role_mail # 邮件列表
+}
+
+# 存放玩家道具和资源
+.role_bag {
+    bags 0 : *bag(res_type) # 背包列表
+}
+
+.bag {
+    res_type 0 : integer # 资源分类 : 区分不同类型的道具和资源
+    res 1 : *resource(res_id) # 资源列表
+}
+
+# 资源
+.resource {
+    res_id 0 : integer # 资源id
+    res_size 1 : integer # 资源数量
+}
+
+# 存放玩家邮件
+.role_mail {
+    _version 0 : integer
+    mails 1 : *mail(mail_id) # 邮件列表
+}
+
+# 一封邮件
+.mail {
+    mail_id 0 : integer # 邮件id
+    cfg_id 1 : integer # 邮件配置id
+    title 2 : *str2str() # 邮件标题
+    detail 3 : *str2str() # 邮件内容
+    send_time 4 : integer # 发送时间
+    send_role 5 : mail_role # 发送人
+    attach 6 : mail_attach # 附件
+}
+
+# format 参数
+.str2str {
+    key 0 : string
+    value 1 : string
+}
+
+.mail_role {
+    rid 0 : integer # 玩家id
+    name 1 : string # 玩家名字
+}
+
+# 资源
+.mail_attach {
+    res_type 0 : integer # 资源分类 : 区分不同类型的道具和资源
+    res_id 1 : integer # 资源id
+    res_size 2 : integer # 资源数量
+}
