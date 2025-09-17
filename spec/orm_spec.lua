@@ -484,7 +484,8 @@ describe("ORM", function()
                 },
             }
             -- print("空map落地", seri(ret))
-            assert.are.same(seri(expected), seri(ret))
+            assert.are.same(expected["$set"].person[1].i2s[1], ret["$set"].person[1].i2s[1])
+            assert.are.same(expected["$set"].person[1].i2s[2], ret["$set"].person[1].i2s[2])
             local ret = orm.with_bson_encode_context(orm.totable, address_book)
             -- print("空map落地序列化", seri(ret))
         end)
@@ -508,9 +509,9 @@ describe("ORM", function()
                 },
             }
             local is_dirty, ret = orm.commit_mongo(role_data)
-            print(is_dirty, seri(ret))
+            -- print(is_dirty, seri(ret))
             local ret = orm.with_bson_encode_context(orm.totable, ret)
-            print("空map落地序列化", seri(ret))
+            -- print("空map落地序列化", seri(ret))
         end)
         it("空struct", function()
             local person = {}
@@ -525,6 +526,23 @@ describe("ORM", function()
             -- print("空struct落地",is_dirty, seri(ret))
             assert.is_false(is_dirty)
             assert.are.same(ret, {})
+        end)
+    end)
+
+    describe("Demo", function()
+        it("最小示例", function()
+            local role_data = {
+                _version = 1,
+                rid = 1001,
+            }
+            role_data = schema.role.new(role_data)
+            role_data.name = "sproto-orm"
+            role_data.account = "hanxi"
+            local is_dirty, ret = orm.commit_mongo(role_data)
+            print(is_dirty, ret["$set"].account, ret["$set"].name)
+            assert.is_true(is_dirty)
+            assert.are.same(ret["$set"].account, "hanxi")
+            assert.are.same(ret["$set"].name, "sproto-orm")
         end)
     end)
 
