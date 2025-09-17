@@ -529,6 +529,38 @@ describe("ORM", function()
         end)
     end)
 
+    describe("删除操作", function()
+        it("删除字段后再修改引用", function()
+            local originAddressBook = {
+                person = {
+                    [1] = {
+                        name = "hanxi",
+                        i2s = {
+                            [1] = "a",
+                            [2] = "c",
+                        },
+                    },
+                },
+            }
+            local address_book = schema.AddressBook.new(originAddressBook)
+            local i2s = address_book.person[1].i2s
+            assert.equals(i2s.__parent, address_book.person[1])
+            address_book.person[1].i2s = nil
+            assert.is_false(i2s.__parent)
+
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            -- print(is_dirty, seri(ret), i2s.__parent)
+            assert.is_true(is_dirty)
+
+            i2s[3] = "c"
+            address_book.person[1].name = "hanxi2"
+            local is_dirty, ret = orm.commit_mongo(address_book)
+            -- print(is_dirty, seri(ret))
+            assert.is_true(is_dirty)
+            assert.are.same(ret["$set"]["person.1.name"], "hanxi2")
+        end)
+    end)
+
     describe("Demo", function()
         it("最小示例", function()
             local role_data = {
@@ -539,7 +571,7 @@ describe("ORM", function()
             role_data.name = "sproto-orm"
             role_data.account = "hanxi"
             local is_dirty, ret = orm.commit_mongo(role_data)
-            print(is_dirty, ret["$set"].account, ret["$set"].name)
+            -- print(is_dirty, ret["$set"].account, ret["$set"].name)
             assert.is_true(is_dirty)
             assert.are.same(ret["$set"].account, "hanxi")
             assert.are.same(ret["$set"].name, "sproto-orm")

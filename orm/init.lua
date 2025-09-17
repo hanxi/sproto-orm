@@ -61,7 +61,12 @@ local function doc_change_value(doc, k, v)
     end
     if v ~= doc[k] then
         doc.__changed_keys[k] = true -- mark changed (even nil)
-        doc.__changed_values[k] = doc.__stage[k] -- lastversion value
+        local lv = doc.__stage[k]
+        if v == nil then
+            if getmetatable(lv) == ormdoc_type then
+                lv.__parent = false
+            end
+        end
         doc.__stage[k] = v -- current value
         mark_dirty(doc)
     end
@@ -251,7 +256,6 @@ _new_doc = function(schema, init)
     doc.__all_dirty = false
     doc.__parent = false
     doc.__changed_keys = {}
-    doc.__changed_values = {}
     doc.__stage = doc_stage
     doc.__schema = schema
 
@@ -304,7 +308,6 @@ local function _clear_dirty(doc, watched)
     doc.__dirty = false
     doc.__all_dirty = false
     doc.__changed_keys = {}
-    doc.__changed_values = {}
     for _, v in pairs(doc) do
         if getmetatable(v) == ormdoc_type then
             _clear_dirty(v)
@@ -348,7 +351,6 @@ end
 local function _commit_mongo(doc, result, path_array, depth)
     doc.__dirty = false
     local changed_keys = doc.__changed_keys
-    local changed_values = doc.__changed_values
     local stage = doc.__stage
     local dirty = false
 
@@ -360,7 +362,6 @@ local function _commit_mongo(doc, result, path_array, depth)
         for k in next, changed_keys do
             local v = stage[k]
             changed_keys[k] = nil
-            changed_values[k] = nil
             if result then
                 if doc.__schema.type == "array" then
                     path_array[depth] = k - 1
