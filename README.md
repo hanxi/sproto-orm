@@ -106,3 +106,7 @@ print(is_dirty, update_data["$set"].account, update_data["$set"].name)
 
 - **设计思路**: [适合游戏服务器开发的ORM](https://blog.hanxi.cc/p/93/)
 - **旧版实现**: [lua-dirty-mongo (Protobuf 版本)](https://github.com/hanxi/lua-dirty-mongo)
+
+## 讨论区
+
+- QQ 群: `677839887`
