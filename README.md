@@ -92,7 +92,7 @@ print(is_dirty, update_data["$set"].account, update_data["$set"].name)
 2. 在你的业务服务（如 `agent`）中使用本 ORM 来管理对象状态。
 3. 调用 `orm.commit_mongo` 生成更新指令，并将其发送给 `mongod` 服务执行。
 
-如果您正在寻找一个集成了此 ORM 的、更完整的 Skynet 开发框架，请关注作者的另一个项目 **[skyext](https://github.com/hanxi/skyext)**，它提供了更完善的解决方案。
+如果您正在寻找一个集成了此 ORM 的、更完整的 Skynet 开发框架，请关注作者的另一个项目 **[skyext](https://github.com/hanxi/skyext)**，它提供了更完善的解决方案。接入文档见 <https://blog.hanxi.cc/p/101/> 。
 
 ## 💡 扩展与兼容
 
@@ -106,6 +106,7 @@ print(is_dirty, update_data["$set"].account, update_data["$set"].name)
 
 - **设计思路**: [适合游戏服务器开发的ORM](https://blog.hanxi.cc/p/93/)
 - **旧版实现**: [lua-dirty-mongo (Protobuf 版本)](https://github.com/hanxi/lua-dirty-mongo)
+- [Skynet 中 MongoDB 数据库操作接口的封装设计](https://blog.hanxi.cc/p/101/)
 
 ## 讨论区
 
